@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
 <title>Green Reader 3D — Realistic Putting Simulator</title>
 <style>
   :root{
@@ -57,6 +57,24 @@
     color:var(--muted);margin:0 0 8px;font-weight:600;}
   .card .row b{font-size:15px;}
   .card.hidden{display:none;}
+
+  /* ---- phone layout: compact read card, control panel as a bottom sheet --- */
+  @media (max-width: 760px){
+    #hdr{top:8px;left:10px;}
+    #hdr h1{font-size:14px;}
+    #hdr .sub{display:none;}
+    .card{top:38px;left:8px;width:174px;padding:8px 10px;font-size:11px;}
+    .card h2{font-size:10px;margin:0 0 4px;}
+    .card .row{margin:3px 0;}
+    .card .row b{font-size:12px;}
+    .card .legend{display:none;}
+    #panelToggle{top:8px;right:8px;width:34px;height:34px;font-size:15px;}
+    .panel{
+      top:auto;bottom:0;left:0;right:0;width:100%;
+      max-height:46vh;border-radius:14px 14px 0 0;
+      padding:12px 16px calc(14px + env(safe-area-inset-bottom));
+    }
+  }
   .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;
     color:var(--muted);margin:0 0 8px;font-weight:600;}
   .row{display:flex;justify-content:space-between;margin:6px 0;}
@@ -197,9 +215,9 @@ try{
 const GW = 60, GH = 40;          // green size in feet
 const VS = 2.8;                  // vertical exaggeration (render only)
 const G = 46.0;                  // gravity constant, ~1.4x real so break reads
-const MAXDRAG_PX = 240;          // screen-pixel drag for full power — measured
-                                 //   in pixels so the feel is identical no
-                                 //   matter where the camera sits
+// screen-pixel drag for full power — measured in pixels so the feel is the
+// same no matter where the camera sits; capped to ~half the screen on phones
+function maxDragPx(){ return Math.min(240, window.innerWidth*0.55); }
 const MAXSPEED = 17;             // ft/s at full power
 const BALL_R = 0.22;             // render radius (real ball would be invisible)
 
@@ -1086,7 +1104,7 @@ function currentAim(){
   // power from SCREEN pixels with a mild ease-out: a comfortable pull covers
   // most putts and the feel doesn't change with camera angle or distance
   const drag=Math.hypot(aimNowPx.x-aimStartPx.x, aimNowPx.y-aimStartPx.y);
-  const power=Math.min(1, Math.pow(drag/MAXDRAG_PX, 0.85));
+  const power=Math.min(1, Math.pow(drag/maxDragPx(), 0.85));
   if(power<0.02) return null;
   const ang=Math.atan2(dz,dx);
   const sp=power*MAXSPEED;
@@ -1100,7 +1118,9 @@ renderer.domElement.addEventListener('pointerdown', e=>{
   rayAt(e);
   const hit=planeHit();
   if(!hit) return;
-  if(Math.hypot(hit.x-ball.x, hit.z-ball.y) > 3.5) return;  // must grab the ball
+  // must grab the ball — fingers need a bigger target than a mouse pointer
+  const grabR=(e.pointerType==='touch'||matchMedia('(pointer:coarse)').matches)?5.5:3.5;
+  if(Math.hypot(hit.x-ball.x, hit.z-ball.y) > grabR) return;
   aiming=true; aimPlanePt=hit;
   aimStartPx={x:e.clientX, y:e.clientY}; aimNowPx=aimStartPx;
   controls.enabled=false;
@@ -1285,11 +1305,15 @@ window.addEventListener('resize', onResize);
 
 const panelEl=document.getElementById('panel');
 const readCardEl=document.getElementById('readCard');
+const isPhone=()=>window.innerWidth<760;
 function togglePanels(){
-  panelEl.classList.toggle('hidden');
-  readCardEl.classList.toggle('hidden');
+  const hide=!panelEl.classList.contains('hidden');
+  panelEl.classList.toggle('hidden', hide);
+  // on phones the compact read card stays up; ☰ only drives the bottom sheet
+  if(!isPhone()) readCardEl.classList.toggle('hidden', hide);
 }
 document.getElementById('panelToggle').onclick=togglePanels;
+if(isPhone()) panelEl.classList.add('hidden');   // open with a clean green on mobile
 
 const rollAxis=new THREE.Vector3();
 let last=performance.now();

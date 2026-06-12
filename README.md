@@ -4,6 +4,12 @@ A single-file browser game that simulates how a golf ball rolls across an
 undulating green, so you can **learn to read break, slope and speed**. No build
 step, no dependencies — just open `index.html` in any modern browser.
 
+**Play online:** [2D version](https://rivenme.github.io/green-reader/) ·
+[3D version](https://rivenme.github.io/green-reader/3d.html) — both work on
+**phones**: the 3D game uses touch (drag the ball to putt, one finger to orbit,
+pinch to zoom), with a compact green-read card and the controls in a ☰
+bottom sheet.
+
 ## Play
 
 ```
