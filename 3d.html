@@ -58,8 +58,19 @@
   .card .row b{font-size:15px;}
   .card.hidden{display:none;}
 
+  #scoreChip{
+    display:none;
+    position:fixed;top:8px;right:48px;z-index:10;
+    background:rgba(24,33,26,.88);backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.06);border-radius:10px;
+    padding:5px 10px;font-size:11px;color:var(--muted);
+    text-align:right;line-height:1.5;
+  }
+  #scoreChip b{color:var(--accent);font-variant-numeric:tabular-nums;}
+
   /* ---- phone layout: compact read card, control panel as a bottom sheet --- */
   @media (max-width: 760px){
+    #scoreChip{display:block;}
     #hdr{top:8px;left:10px;}
     #hdr h1{font-size:14px;}
     #hdr .sub{display:none;}
@@ -129,6 +140,11 @@
   </div>
 
   <button id="panelToggle" title="Show / hide panels (H)">☰</button>
+
+  <div id="scoreChip">
+    <div>Lv <b id="scLevel">1/50</b> · par <b id="scPar">2</b></div>
+    <div>strokes <b id="scStrokes">0</b> · total <b id="scTotal">E</b></div>
+  </div>
 
   <div class="card" id="readCard">
     <h2>📖 Green read</h2>
@@ -1181,6 +1197,11 @@ function updateUI(){
   document.getElementById('uiPar').textContent=level.par;
   document.getElementById('uiStrokes').textContent=strokes;
   document.getElementById('uiTotal').textContent=fmtVsPar(totalVsPar);
+  // compact score chip (visible on phones)
+  document.getElementById('scLevel').textContent=LV+'/50';
+  document.getElementById('scPar').textContent=level.par;
+  document.getElementById('scStrokes').textContent=strokes;
+  document.getElementById('scTotal').textContent=fmtVsPar(totalVsPar);
   document.getElementById('uiDist').textContent=dist(ball,level.hole).toFixed(1)+' ft';
   document.getElementById('uiStimp').textContent=stimp.toFixed(1);
   document.getElementById('uiBreak').textContent=breakStat;
