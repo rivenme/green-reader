@@ -67,10 +67,25 @@
     text-align:right;line-height:1.5;
   }
   #scoreChip b{color:var(--accent);font-variant-numeric:tabular-nums;}
+  #quickBtns{
+    display:none;
+    position:fixed;right:10px;bottom:calc(14px + env(safe-area-inset-bottom));
+    z-index:10;flex-direction:column;gap:10px;
+  }
+  #quickBtns button{
+    width:46px;height:46px;border-radius:50%;margin:0;padding:0;
+    background:rgba(24,33,26,.88);backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.12);color:var(--ink);
+    font-size:20px;cursor:pointer;
+  }
+  #quickBtns button.active{
+    background:#2f6f36;border-color:var(--accent);
+  }
 
   /* ---- phone layout: compact read card, control panel as a bottom sheet --- */
   @media (max-width: 760px){
     #scoreChip{display:block;}
+    #quickBtns{display:flex;}
     #hdr{top:8px;left:10px;}
     #hdr h1{font-size:14px;}
     #hdr .sub{display:none;}
@@ -144,6 +159,11 @@
   <div id="scoreChip">
     <div>Lv <b id="scLevel">1/50</b> · par <b id="scPar">2</b></div>
     <div>strokes <b id="scStrokes">0</b> · total <b id="scTotal">E</b></div>
+  </div>
+
+  <div id="quickBtns">
+    <button id="qbLine" title="Best line to hole">⛳</button>
+    <button id="qbRetry" title="Replay this hole">↺</button>
   </div>
 
   <div class="card" id="readCard">
@@ -1058,7 +1078,9 @@ function drawBestRoute(route){
 }
 
 function refreshBestRoute(){
-  if(!document.getElementById('optBest').checked || ball.moving || holed){
+  const on=document.getElementById('optBest').checked;
+  document.getElementById('qbLine').classList.toggle('active', on);
+  if(!on || ball.moving || holed){
     drawBestRoute(null); return;
   }
   drawBestRoute(solveBestRoute());
@@ -1330,11 +1352,21 @@ const isPhone=()=>window.innerWidth<760;
 function togglePanels(){
   const hide=!panelEl.classList.contains('hidden');
   panelEl.classList.toggle('hidden', hide);
-  // on phones the compact read card stays up; ☰ only drives the bottom sheet
+  // on phones the compact read card stays up; ☰ only drives the bottom sheet.
+  // Quick buttons make way for the sheet (their controls live there too).
   if(!isPhone()) readCardEl.classList.toggle('hidden', hide);
+  document.getElementById('quickBtns').style.display = !hide && isPhone() ? 'none' : '';
 }
 document.getElementById('panelToggle').onclick=togglePanels;
 if(isPhone()) panelEl.classList.add('hidden');   // open with a clean green on mobile
+
+// phone quick buttons: retry + best-line toggle without opening the sheet
+document.getElementById('qbRetry').onclick=()=>loadLevel(LV);
+document.getElementById('qbLine').onclick=()=>{
+  const o=document.getElementById('optBest');
+  o.checked=!o.checked;
+  refreshBestRoute();
+};
 
 const rollAxis=new THREE.Vector3();
 let last=performance.now();
