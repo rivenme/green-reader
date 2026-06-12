@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Green Reader — Realistic Putting Simulator</title>
+<style>
+  :root{
+    --bg:#0f1410;
+    --panel:#18211a;
+    --ink:#e8f0e6;
+    --accent:#7ee081;
+    --muted:#8aa090;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;height:100%;}
+  body{
+    background:radial-gradient(1200px 800px at 50% -10%,#1c2a1d,#0c100c);
+    color:var(--ink);
+    font-family:'Segoe UI',system-ui,-apple-system,sans-serif;
+    display:flex;flex-direction:column;align-items:center;
+    min-height:100%;
+    user-select:none;-webkit-user-select:none;
+  }
+  h1{font-size:18px;letter-spacing:.5px;margin:14px 0 4px;font-weight:600;}
+  h1 span{color:var(--accent);}
+  .sub{color:var(--muted);font-size:12px;margin-bottom:10px;}
+  .sub a{color:var(--accent);text-decoration:none;}
+  .sub a:hover{text-decoration:underline;}
+  .wrap{
+    display:flex;gap:16px;align-items:flex-start;
+    padding:0 16px 24px;flex-wrap:wrap;justify-content:center;
+  }
+  .stage{position:relative;}
+  canvas{
+    background:#1d3a1f;border-radius:10px;
+    box-shadow:0 18px 50px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.04);
+    cursor:crosshair;display:block;touch-action:none;
+    max-width:100%;height:auto;
+  }
+  .panel{
+    background:var(--panel);border:1px solid rgba(255,255,255,.06);
+    border-radius:10px;padding:16px;width:240px;font-size:13px;
+  }
+  .panel h2{font-size:12px;text-transform:uppercase;letter-spacing:1px;
+    color:var(--muted);margin:0 0 8px;font-weight:600;}
+  .row{display:flex;justify-content:space-between;margin:6px 0;}
+  .row b{color:var(--accent);font-variant-numeric:tabular-nums;}
+  .panel hr{border:0;border-top:1px solid rgba(255,255,255,.07);margin:14px 0;}
+  button{
+    width:100%;background:#243a27;color:var(--ink);border:1px solid rgba(255,255,255,.1);
+    border-radius:8px;padding:9px;font-size:13px;cursor:pointer;margin-top:8px;
+    transition:.15s;
+  }
+  button:hover{background:#2d4a30;border-color:var(--accent);}
+  button.primary{background:#2f6f36;border-color:#3f8f46;}
+  button.primary:hover{background:#3a8642;}
+  label.toggle{display:flex;align-items:center;gap:8px;margin:10px 0;cursor:pointer;}
+  label.toggle input{accent-color:var(--accent);width:16px;height:16px;}
+  .legend{font-size:11px;color:var(--muted);line-height:1.5;margin-top:6px;}
+  .legend i{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-1px;margin-right:5px;}
+  .tips{font-size:11px;color:var(--muted);line-height:1.6;margin-top:4px;}
+  .msg{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    pointer-events:none;
+  }
+  .msg div{
+    background:rgba(8,14,9,.82);padding:18px 26px;border-radius:12px;
+    font-size:22px;font-weight:600;text-align:center;border:1px solid rgba(126,224,129,.35);
+    pointer-events:auto;
+  }
+  .msg small{display:block;font-size:13px;color:var(--muted);font-weight:400;margin-top:6px;}
+  kbd{background:#0c120d;border:1px solid rgba(255,255,255,.15);border-radius:4px;
+    padding:1px 5px;font-size:11px;}
+</style>
+</head>
+<body>
+  <h1><span>⛳ Green Reader</span> — Realistic Putting Simulator</h1>
+  <div class="sub">Read the slope. Judge the speed. Sink the putt. · <a href="3d.html">Try the 3D version →</a></div>
+
+  <div class="wrap">
+    <div class="stage">
+      <canvas id="cv" width="960" height="640"></canvas>
+      <div class="msg" id="msg" style="display:none"><div id="msgText"></div></div>
+    </div>
+
+    <div class="panel">
+      <h2>Hole</h2>
+      <div class="row"><span>Level</span><b id="uiLevel">1</b></div>
+      <div class="row"><span>Par</span><b id="uiPar">2</b></div>
+      <div class="row"><span>Strokes (hole)</span><b id="uiStrokes">0</b></div>
+      <div class="row"><span>Total vs Par</span><b id="uiTotal">E</b></div>
+      <hr/>
+      <h2>Green</h2>
+      <div class="row"><span>Distance</span><b id="uiDist">0 ft</b></div>
+      <div class="row"><span>Stimp (speed)</span><b id="uiStimp">9.0</b></div>
+      <div class="row"><span>Max break</span><b id="uiBreak">—</b></div>
+      <hr/>
+      <h2>Learning Aids</h2>
+      <label class="toggle"><input type="checkbox" id="optSlope" checked> Slope arrows &amp; shading</label>
+      <label class="toggle"><input type="checkbox" id="optPath"> Show predicted break path</label>
+      <label class="toggle"><input type="checkbox" id="optGrid" checked> Contour grid</label>
+      <div class="legend">
+        <i style="background:#b94646"></i>high ground&nbsp;&nbsp;
+        <i style="background:#3f7d44"></i>level&nbsp;&nbsp;
+        <i style="background:#2a4d8f"></i>low / valley
+        <div style="margin-top:4px">Arrows point <b style="color:var(--accent)">downhill</b> — the ball breaks that way.</div>
+      </div>
+      <hr/>
+      <button class="primary" id="btnPutt" disabled>Drag the ball to putt</button>
+      <button id="btnRetry">Replay this hole</button>
+      <button id="btnNext">Skip to next level →</button>
+      <div class="tips">
+        <b>How to play:</b> Press &amp; drag <i>away</i> from the ball (slingshot). The
+        line shows aim &amp; power — but it stays straight, so YOU must aim into the
+        slope to let gravity curve it in. Release to putt.
+        <br>Keys: <kbd>R</kbd> retry · <kbd>P</kbd> path · <kbd>S</kbd> slope
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ============================================================================
+   GREEN READER — a putting simulator built to teach how a ball rolls across
+   undulating greens (hills, valleys/"depth") at different green speeds.
+
+   PHYSICS MODEL  (top-down, real-world units, scaled to pixels)
+   ----------------------------------------------------------------------------
+   The green is a continuous ELEVATION FIELD h(x,y) in feet, built from a tilted
+   base plane plus a handful of Gaussian bumps & hollows. From it we derive:
+
+     slope  = ∇h            (the gradient: steepest uphill direction)
+     a_grav = -g * sinθ ≈ -g * ∇h        (gravity pulls the ball downhill)
+     a_roll = -μ_eff * v̂   (rolling resistance opposing motion; set by Stimp)
+
+   Acceleration each step:  a = a_grav + a_roll
+   We integrate with small fixed time-steps (semi-implicit Euler) for stability.
+
+   Green speed uses the real STIMPMETER idea: a higher stimp number = a faster,
+   lower-friction green where the ball rolls farther and breaks more.
+
+   The ball "falls" only if it reaches the cup slowly enough; arrive too hot and
+   it lips out — just like real life.
+   ========================================================================== */
+
+const cv  = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const W = cv.width, H = cv.height;
+
+// ---- world scaling -------------------------------------------------------
+// 1 foot = PXPF pixels.  The canvas therefore shows ~ (W/PXPF) x (H/PXPF) feet.
+const PXPF = 16;                 // pixels per foot
+const G = 46.0;                  // gravity constant, deliberately ~1.4x real
+                                 //   (32.2 ft/s²) so break is clearly readable
+                                 //   on screen — real-scale break looks flat
+
+// ---------------------------------------------------------------------------
+//  ELEVATION FIELD
+// ---------------------------------------------------------------------------
+// A level is defined by a base tilt (plane) + bumps. h() returns feet of height.
+let level = null;     // current level definition
+let LV = 1;           // current level number
+let stimp = 9;        // green speed for this hole
+
+function makeLevel(n){
+  // Difficulty scales with n: more tilt, more & sharper undulations, longer
+  // putts, faster greens, smaller effective margin for error.
+  const rnd = mulberry32(0x9e37 + n*2654435761 >>> 0);
+  const R = (a,b)=>a+(b-a)*rnd();
+
+  const diff = Math.min(1, (n-1)/9);              // 0 → 1 across 10 levels
+  stimp = +(8 + diff*5).toFixed(1);               // 8.0 (slow) → 13.0 (lightning)
+
+  // Base plane tilt: gradient in feet-per-foot. Grows with level.
+  const tiltMag = R(0.009, 0.018) + diff*0.045;
+  const tiltDir = R(0, Math.PI*2);
+  const baseGrad = { x: Math.cos(tiltDir)*tiltMag, y: Math.sin(tiltDir)*tiltMag };
+
+  // Undulations: Gaussian bumps (amp>0 hill, amp<0 hollow/"depth").
+  const nBumps = 3 + Math.round(diff*5) + Math.round(R(0,2));
+  const bumps = [];
+  for(let i=0;i<nBumps;i++){
+    bumps.push({
+      x: R(4, W/PXPF-4),
+      y: R(4, H/PXPF-4),
+      amp: (rnd()<0.5?-1:1) * R(0.3, 0.7+diff*1.2),    // feet of rise/fall
+      sig: R(3.0, 6.5),                                // spread (feet)
+    });
+  }
+
+  // Place hole near the top, ball near the bottom; distance grows with level.
+  const hole = { x: R(W/PXPF*0.3, W/PXPF*0.7), y: R(5, 9) };
+  const minDist = 8 + diff*14;
+  let ball;
+  do{
+    ball = { x: R(W/PXPF*0.2, W/PXPF*0.8), y: R(H/PXPF-9, H/PXPF-4) };
+  }while(dist(ball,hole) < minDist);
+
+  const par = dist(ball,hole) > 24 ? 3 : 2;
+
+  return { n, baseGrad, bumps, hole, ball, par, holeR: 0.35 /*ft, ~4.25in cup*/ };
+}
+
+// Elevation in feet at world (fx,fy) in feet.
+function elev(fx,fy){
+  const L = level;
+  let h = L.baseGrad.x*fx + L.baseGrad.y*fy;       // tilted plane
+  for(const b of L.bumps){
+    const dx=fx-b.x, dy=fy-b.y;
+    h += b.amp * Math.exp(-(dx*dx+dy*dy)/(2*b.sig*b.sig));
+  }
+  return h;
+}
+
+// Analytic gradient of the elevation field (∂h/∂x, ∂h/∂y) in ft/ft.
+function grad(fx,fy){
+  const L = level;
+  let gx=L.baseGrad.x, gy=L.baseGrad.y;
+  for(const b of L.bumps){
+    const dx=fx-b.x, dy=fy-b.y;
+    const e = b.amp * Math.exp(-(dx*dx+dy*dy)/(2*b.sig*b.sig));
+    gx += e * (-dx/(b.sig*b.sig));
+    gy += e * (-dy/(b.sig*b.sig));
+  }
+  return {x:gx, y:gy};
+}
+
+// ---------------------------------------------------------------------------
+//  BALL & SIMULATION STATE
+// ---------------------------------------------------------------------------
+let ball = {x:0,y:0,vx:0,vy:0,moving:false};   // position in FEET, velocity ft/s
+let strokes = 0, totalVsPar = 0;
+let holed = false, outOfBounds = false;
+let aiming = false, aimStart=null, aimNow=null;
+let trail = [];                                // rolled path of the last putt (feet)
+
+function loadLevel(n){
+  LV = n;
+  level = makeLevel(n);
+  ball.x = level.ball.x; ball.y = level.ball.y;
+  ball.vx = ball.vy = 0; ball.moving=false;
+  strokes = 0; holed=false; outOfBounds=false; aiming=false; trail=[];
+  computeBreakStat();
+  updateUI();
+  hideMsg();
+  document.getElementById('btnPutt').textContent='Drag the ball to putt';
+}
+
+// Friction (rolling deceleration) derived from Stimpmeter.
+// On the real stimpmeter a ball leaves the ramp at ~6 ft/s and rolls `stimp`
+// feet. Constant deceleration a gives  a = v0²/(2·stimp).  We use that.
+function frictionDecel(){
+  const v0 = 6.0;
+  return (v0*v0)/(2*stimp);     // ft/s² — bigger when stimp small (slow green)
+}
+
+// ---------------------------------------------------------------------------
+//  PHYSICS STEP  (semi-implicit Euler, fixed dt, sub-stepped)
+// ---------------------------------------------------------------------------
+function physics(dt){
+  if(!ball.moving) return;
+  const SUB = 6;
+  const h = dt/SUB;
+  const mu = frictionDecel();
+  trail.push({x:ball.x, y:ball.y});
+  if(trail.length>1500) trail.shift();
+
+  for(let s=0;s<SUB;s++){
+    const sp = Math.hypot(ball.vx, ball.vy);
+
+    // gravity component along the surface (downhill = -gradient)
+    const g = grad(ball.x, ball.y);
+    let ax = -G * g.x;
+    let ay = -G * g.y;
+
+    // rolling resistance opposes velocity; if nearly stopped, it instead
+    // resists the residual gravity so the ball can settle.
+    if(sp > 1e-3){
+      ax -= mu * ball.vx/sp;
+      ay -= mu * ball.vy/sp;
+    }
+
+    ball.vx += ax*h;
+    ball.vy += ay*h;
+
+    // integrate position
+    const nx = ball.x + ball.vx*h;
+    const ny = ball.y + ball.vy*h;
+
+    // ---- cup capture --------------------------------------------------
+    const hole = level.hole;
+    const dToHole = Math.hypot(nx-hole.x, ny-hole.y);
+    if(dToHole < level.holeR + 0.05){
+      const sp2 = Math.hypot(ball.vx,ball.vy);
+      // Must be travelling slowly enough to drop; fast balls lip out (deflect).
+      const capSpeed = 7.0;           // ft/s threshold to be captured
+      if(sp2 < capSpeed){
+        ball.x = hole.x; ball.y = hole.y;
+        ball.vx=ball.vy=0; ball.moving=false; holed=true;
+        onHoled();
+        return;
+      }else if(dToHole < level.holeR*0.6){
+        // dead center but hot → it can still drop; otherwise rim-out below
+        ball.x=hole.x; ball.y=hole.y; ball.vx=ball.vy=0; ball.moving=false;
+        holed=true; onHoled(); return;
+      }else{
+        // lip-out: deflect tangentially & lose energy
+        const tx = -(ny-hole.y), ty = (nx-hole.x);
+        const tl = Math.hypot(tx,ty)||1;
+        const into = (ball.vx*tx + ball.vy*ty)/tl;
+        ball.vx = (tx/tl)*into*0.55;
+        ball.vy = (ty/tl)*into*0.55;
+      }
+    }
+
+    ball.x = nx; ball.y = ny;
+
+    // ---- bounds (fringe): treat as out, gentle stop -------------------
+    const m=0.6;
+    if(ball.x<m||ball.x>W/PXPF-m||ball.y<m||ball.y>H/PXPF-m){
+      ball.x=Math.max(m,Math.min(W/PXPF-m,ball.x));
+      ball.y=Math.max(m,Math.min(H/PXPF-m,ball.y));
+      ball.vx*=-0.25; ball.vy*=-0.25;   // bump off fringe
+    }
+
+    // ---- settle test --------------------------------------------------
+    const sp3 = Math.hypot(ball.vx, ball.vy);
+    const slope = Math.hypot(g.x,g.y);
+    // stops only when slow AND the slope can't keep it rolling
+    if(sp3 < 0.12 && G*slope < mu*1.02){
+      ball.vx=ball.vy=0; ball.moving=false; onStopped(); return;
+    }
+  }
+}
+
+function onHoled(){
+  const sc = strokes - level.par;
+  totalVsPar += sc;
+  const term = ({'-2':'Eagle!','-1':'Birdie!','0':'Par','1':'Bogey','2':'Double bogey'})[sc] || (sc<0?'Great!':'+'+sc);
+  showMsg(`⛳ Holed in ${strokes}`, `${term}. ${LV<10?'Next level loading…':'Final hole complete!'}`);
+  updateUI();
+  setTimeout(()=>{ if(LV<10) loadLevel(LV+1); else showMsg('🏆 Course complete!', `Total vs par: ${fmtVsPar(totalVsPar)}. Press Replay to play again.`); }, 1600);
+}
+function onStopped(){
+  // out of bounds check (sitting on fringe)
+  updateUI();
+  document.getElementById('btnPutt').textContent='Drag the ball to putt';
+}
+
+// ---------------------------------------------------------------------------
+//  PREDICTED PATH (learning aid) — runs the same physics forward, no drawing.
+// ---------------------------------------------------------------------------
+function simulatePath(x,y,vx,vy){
+  const pts=[{x,y}];
+  const b={x,y,vx,vy};
+  const mu=frictionDecel(); const h=1/120;
+  for(let i=0;i<2400;i++){
+    const sp=Math.hypot(b.vx,b.vy);
+    const g=grad(b.x,b.y);
+    let ax=-G*g.x, ay=-G*g.y;
+    if(sp>1e-3){ ax-=mu*b.vx/sp; ay-=mu*b.vy/sp; }
+    b.vx+=ax*h; b.vy+=ay*h;
+    b.x+=b.vx*h; b.y+=b.vy*h;
+    if(i%3===0) pts.push({x:b.x,y:b.y});
+    const hole=level.hole;
+    if(Math.hypot(b.x-hole.x,b.y-hole.y)<level.holeR){ pts.push({x:hole.x,y:hole.y}); break;}
+    const sp2=Math.hypot(b.vx,b.vy), slope=Math.hypot(g.x,g.y);
+    if(sp2<0.12 && G*slope<mu*1.02){ pts.push({x:b.x,y:b.y}); break;}
+    if(b.x<0||b.x>W/PXPF||b.y<0||b.y>H/PXPF) break;
+  }
+  return pts;
+}
+
+// ---------------------------------------------------------------------------
+//  RENDERING
+// ---------------------------------------------------------------------------
+let elevCache=null;        // cached shaded background (ImageData)
+function buildShade(){
+  const step=2;            // sample every 2px for speed
+  const img=ctx.createImageData(W,H);
+  // find elevation range for normalisation
+  let mn=1e9,mx=-1e9;
+  for(let py=0;py<H;py+=8)for(let px=0;px<W;px+=8){
+    const h=elev(px/PXPF,py/PXPF); if(h<mn)mn=h; if(h>mx)mx=h;
+  }
+  const rng=(mx-mn)||1;
+  for(let py=0;py<H;py+=step){
+    for(let px=0;px<W;px+=step){
+      const fx=px/PXPF, fy=py/PXPF;
+      const h=elev(fx,fy);
+      const t=(h-mn)/rng;                 // 0 low → 1 high
+      // colour ramp: blue(low) → green(level) → red(high)
+      let r,g,b;
+      if(t<0.5){ const k=t/0.5; r=42+(63-42)*k; g=77+(125-77)*k; b=143+(68-143)*k; }
+      else     { const k=(t-0.5)/0.5; r=63+(185-63)*k; g=125+(70-125)*k; b=68+(70-68)*k; }
+      // subtle hillshade from gradient (light from upper-left)
+      const gr=grad(fx,fy);
+      const shade=1 - Math.max(-0.5,Math.min(0.5,(gr.x*0.7+gr.y*0.7)*6))*0.5;
+      r*=shade; g*=shade; b*=shade;
+      for(let dy=0;dy<step;dy++)for(let dx=0;dx<step;dx++){
+        const i=((py+dy)*W+(px+dx))*4;
+        img.data[i]=r; img.data[i+1]=g; img.data[i+2]=b; img.data[i+3]=255;
+      }
+    }
+  }
+  elevCache=img;
+}
+
+function draw(){
+  if(elevCache) ctx.putImageData(elevCache,0,0);
+  else ctx.clearRect(0,0,W,H);
+
+  const showGrid = document.getElementById('optGrid').checked;
+  const showSlope= document.getElementById('optSlope').checked;
+  const showPath = document.getElementById('optPath').checked;
+
+  // contour grid lines (constant-elevation-ish): simple lattice for reference
+  if(showGrid){
+    ctx.strokeStyle='rgba(255,255,255,.06)';ctx.lineWidth=1;
+    for(let fx=0;fx<=W/PXPF;fx+=2){ctx.beginPath();ctx.moveTo(fx*PXPF,0);ctx.lineTo(fx*PXPF,H);ctx.stroke();}
+    for(let fy=0;fy<=H/PXPF;fy+=2){ctx.beginPath();ctx.moveTo(0,fy*PXPF);ctx.lineTo(W,fy*PXPF);ctx.stroke();}
+  }
+
+  // slope direction arrows (downhill)
+  if(showSlope){
+    const spc=44;
+    for(let py=spc/2;py<H;py+=spc)for(let px=spc/2;px<W;px+=spc){
+      const g=grad(px/PXPF,py/PXPF);
+      const mag=Math.hypot(g.x,g.y);
+      if(mag<1e-3)continue;
+      const len=Math.min(18, mag*420);
+      const dx=-g.x/mag, dy=-g.y/mag;            // downhill
+      const ex=px+dx*len, ey=py+dy*len;
+      const a=Math.min(1,mag*14);
+      ctx.strokeStyle=`rgba(255,255,255,${0.18+a*0.5})`;
+      ctx.lineWidth=1.4;
+      ctx.beginPath();ctx.moveTo(px,py);ctx.lineTo(ex,ey);ctx.stroke();
+      // arrowhead
+      const ang=Math.atan2(dy,dx);
+      ctx.beginPath();
+      ctx.moveTo(ex,ey);
+      ctx.lineTo(ex-Math.cos(ang-0.4)*5,ey-Math.sin(ang-0.4)*5);
+      ctx.moveTo(ex,ey);
+      ctx.lineTo(ex-Math.cos(ang+0.4)*5,ey-Math.sin(ang+0.4)*5);
+      ctx.stroke();
+    }
+  }
+
+  // rolled trail of the last putt — makes the break the ball actually took visible
+  if(trail.length>1){
+    ctx.lineWidth=2; ctx.lineCap='round';
+    for(let i=1;i<trail.length;i++){
+      const a=0.05 + 0.5*(i/trail.length);     // fade older segments
+      ctx.strokeStyle=`rgba(255,255,255,${a})`;
+      ctx.beginPath();
+      ctx.moveTo(trail[i-1].x*PXPF, trail[i-1].y*PXPF);
+      ctx.lineTo(trail[i].x*PXPF,   trail[i].y*PXPF);
+      ctx.stroke();
+    }
+  }
+
+  // the hole
+  const hole=level.hole;
+  const hx=hole.x*PXPF, hy=hole.y*PXPF, hr=level.holeR*PXPF;
+  ctx.fillStyle='#05140a';
+  ctx.beginPath();ctx.arc(hx,hy,hr+2,0,7);ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=2;ctx.stroke();
+  // flag
+  ctx.strokeStyle='#f4f4f4';ctx.lineWidth=2;
+  ctx.beginPath();ctx.moveTo(hx,hy);ctx.lineTo(hx,hy-34);ctx.stroke();
+  ctx.fillStyle='#e0413f';
+  ctx.beginPath();ctx.moveTo(hx,hy-34);ctx.lineTo(hx+18,hy-29);ctx.lineTo(hx,hy-24);ctx.closePath();ctx.fill();
+
+  // predicted break path (learning aid) — only when ball is at rest
+  if(showPath && !ball.moving && !holed){
+    const aim = currentAim();
+    if(aim){
+      const pts=simulatePath(ball.x,ball.y,aim.vx,aim.vy);
+      ctx.strokeStyle='rgba(255,235,120,.85)';
+      ctx.lineWidth=2; ctx.setLineDash([6,5]);
+      ctx.beginPath();
+      pts.forEach((p,i)=>{const X=p.x*PXPF,Y=p.y*PXPF; i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});
+      ctx.stroke(); ctx.setLineDash([]);
+      const end=pts[pts.length-1];
+      ctx.fillStyle='rgba(255,235,120,.9)';
+      ctx.beginPath();ctx.arc(end.x*PXPF,end.y*PXPF,3,0,7);ctx.fill();
+    }
+  }
+
+  // aim line (always straight — the player's intended start direction)
+  if(aiming && aimStart && aimNow){
+    const bx=ball.x*PXPF, by=ball.y*PXPF;
+    const dx=aimStart.x-aimNow.x, dy=aimStart.y-aimNow.y;   // slingshot: opposite of drag
+    const power=Math.min(1, Math.hypot(dx,dy)/MAXDRAG);
+    const ang=Math.atan2(dy,dx);
+    const len=power*120;
+    // power-graded line
+    const grd=ctx.createLinearGradient(bx,by,bx+Math.cos(ang)*len,by+Math.sin(ang)*len);
+    grd.addColorStop(0,'rgba(126,224,129,.95)');
+    grd.addColorStop(1, power>0.8?'rgba(232,80,80,.95)':'rgba(255,210,90,.9)');
+    ctx.strokeStyle=grd; ctx.lineWidth=3;
+    ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(bx+Math.cos(ang)*len,by+Math.sin(ang)*len);ctx.stroke();
+    // power pips
+    ctx.fillStyle='rgba(0,0,0,.5)';
+    ctx.fillRect(bx-26,by+16,52,7);
+    ctx.fillStyle = power>0.8?'#e85050':power>0.5?'#ffce5a':'#7ee081';
+    ctx.fillRect(bx-25,by+17,50*power,5);
+  }
+
+  // the ball
+  const bx=ball.x*PXPF, by=ball.y*PXPF;
+  ctx.fillStyle='rgba(0,0,0,.35)';
+  ctx.beginPath();ctx.ellipse(bx+2,by+3,6,5,0,0,7);ctx.fill();
+  const bg=ctx.createRadialGradient(bx-2,by-2,1,bx,by,6);
+  bg.addColorStop(0,'#ffffff');bg.addColorStop(1,'#cdd6cd');
+  ctx.fillStyle=bg;
+  ctx.beginPath();ctx.arc(bx,by,6,0,7);ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,.25)';ctx.lineWidth=1;ctx.stroke();
+}
+
+// ---------------------------------------------------------------------------
+//  AIMING  (slingshot: press on/near ball, drag opposite to intended path)
+// ---------------------------------------------------------------------------
+const MAXDRAG = 130;           // px drag = full power
+const MAXSPEED = 17;           // ft/s at full power
+
+function currentAim(){
+  if(!aimStart||!aimNow) return null;
+  const dx=aimStart.x-aimNow.x, dy=aimStart.y-aimNow.y;
+  const power=Math.min(1, Math.hypot(dx,dy)/MAXDRAG);
+  if(power<0.02) return null;
+  const ang=Math.atan2(dy,dx);
+  const sp=power*MAXSPEED;
+  return {vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp, power};
+}
+
+function pos(e){
+  const r=cv.getBoundingClientRect();
+  const t=e.touches?e.touches[0]:e;
+  return {x:(t.clientX-r.left)*(W/r.width), y:(t.clientY-r.top)*(H/r.height)};
+}
+function down(e){
+  if(ball.moving||holed) return;
+  const p=pos(e);
+  const bx=ball.x*PXPF, by=ball.y*PXPF;
+  if(Math.hypot(p.x-bx,p.y-by) > 60) return;   // must grab near the ball
+  aiming=true; aimStart={x:bx,y:by}; aimNow=p;
+  document.getElementById('btnPutt').textContent='Release to putt…';
+  e.preventDefault();
+}
+function move(e){ if(aiming){ aimNow=pos(e); e.preventDefault(); } }
+function up(e){
+  if(!aiming) return;
+  aiming=false;
+  const aim=currentAim();
+  document.getElementById('btnPutt').textContent='Drag the ball to putt';
+  if(aim){
+    ball.vx=aim.vx; ball.vy=aim.vy; ball.moving=true;
+    trail=[{x:ball.x, y:ball.y}];
+    strokes++; updateUI();
+  }
+  aimStart=aimNow=null;
+  e.preventDefault();
+}
+cv.addEventListener('mousedown',down); window.addEventListener('mousemove',move); window.addEventListener('mouseup',up);
+cv.addEventListener('touchstart',down,{passive:false}); cv.addEventListener('touchmove',move,{passive:false}); cv.addEventListener('touchend',up,{passive:false});
+
+// ---------------------------------------------------------------------------
+//  UI
+// ---------------------------------------------------------------------------
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+function fmtVsPar(v){return v===0?'E':(v>0?'+'+v:''+v);}
+let breakStat='—';
+function computeBreakStat(){
+  // estimate the max cross-slope between ball & hole for the info panel
+  let mx=0;
+  for(let t=0;t<=1;t+=0.05){
+    const x=level.ball.x+(level.hole.x-level.ball.x)*t;
+    const y=level.ball.y+(level.hole.y-level.ball.y)*t;
+    const g=grad(x,y); mx=Math.max(mx,Math.hypot(g.x,g.y));
+  }
+  breakStat = mx<0.012?'gentle':mx<0.03?'moderate':mx<0.05?'strong':'severe';
+}
+function updateUI(){
+  document.getElementById('uiLevel').textContent=LV;
+  document.getElementById('uiPar').textContent=level.par;
+  document.getElementById('uiStrokes').textContent=strokes;
+  document.getElementById('uiTotal').textContent=fmtVsPar(totalVsPar);
+  document.getElementById('uiDist').textContent=dist(level.ball,level.hole).toFixed(1)+' ft';
+  document.getElementById('uiStimp').textContent=stimp.toFixed(1);
+  document.getElementById('uiBreak').textContent=breakStat;
+}
+function showMsg(t,s){const m=document.getElementById('msg');document.getElementById('msgText').innerHTML=t+(s?`<small>${s}</small>`:'');m.style.display='flex';}
+function hideMsg(){document.getElementById('msg').style.display='none';}
+
+document.getElementById('btnRetry').onclick=()=>loadLevel(LV);
+document.getElementById('btnNext').onclick=()=>loadLevel(Math.min(10,LV+1));
+document.getElementById('optSlope').onchange=()=>{};
+document.getElementById('optGrid').onchange=()=>{};
+window.addEventListener('keydown',e=>{
+  if(e.key==='r'||e.key==='R')loadLevel(LV);
+  if(e.key==='p'||e.key==='P'){const o=document.getElementById('optPath');o.checked=!o.checked;}
+  if(e.key==='s'||e.key==='S'){const o=document.getElementById('optSlope');o.checked=!o.checked;}
+});
+
+// ---------------------------------------------------------------------------
+//  MAIN LOOP
+// ---------------------------------------------------------------------------
+let last=performance.now();
+function frame(now){
+  const dt=Math.min(0.033,(now-last)/1000); last=now;
+  physics(dt);
+  draw();
+  requestAnimationFrame(frame);
+}
+
+// rebuild the shaded background whenever the level changes
+const _loadLevel=loadLevel;
+loadLevel=function(n){ _loadLevel(n); buildShade(); };
+
+// ---- tiny seeded RNG so each level is reproducible -----------------------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+
+// boot
+loadLevel(1);
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
