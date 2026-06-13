@@ -162,7 +162,7 @@
   </div>
 
   <div id="quickBtns">
-    <button id="qbLine" title="Best line to hole">⛳</button>
+    <button id="qbPath" title="Predicted break path">➰</button>
     <button id="qbRetry" title="Replay this hole">↺</button>
   </div>
 
@@ -1079,7 +1079,6 @@ function drawBestRoute(route){
 
 function refreshBestRoute(){
   const on=document.getElementById('optBest').checked;
-  document.getElementById('qbLine').classList.toggle('active', on);
   if(!on || ball.moving || holed){
     drawBestRoute(null); return;
   }
@@ -1326,7 +1325,7 @@ document.getElementById('optSlope').onchange=e=>{flow.pts.visible=e.target.check
 document.getElementById('optGrid').onchange=e=>{uContour.value=e.target.checked?1:0;};
 window.addEventListener('keydown',e=>{
   if(e.key==='r'||e.key==='R')loadLevel(LV);
-  if(e.key==='p'||e.key==='P'){const o=document.getElementById('optPath');o.checked=!o.checked;}
+  if(e.key==='p'||e.key==='P'){const o=document.getElementById('optPath');o.checked=!o.checked;syncPathBtn();}
   if(e.key==='b'||e.key==='B'){const o=document.getElementById('optBest');o.checked=!o.checked;refreshBestRoute();}
   if(e.key==='s'||e.key==='S'){const o=document.getElementById('optSlope');o.checked=!o.checked;flow.pts.visible=o.checked;}
   if(e.key==='c'||e.key==='C')snapCamera(true);
@@ -1362,11 +1361,9 @@ if(isPhone()) panelEl.classList.add('hidden');   // open with a clean green on m
 
 // phone quick buttons: retry + best-line toggle without opening the sheet
 document.getElementById('qbRetry').onclick=()=>loadLevel(LV);
-document.getElementById('qbLine').onclick=()=>{
-  const o=document.getElementById('optBest');
-  o.checked=!o.checked;
-  refreshBestRoute();
-};
+const optPathEl=document.getElementById('optPath');
+function syncPathBtn(){ document.getElementById('qbPath').classList.toggle('active', optPathEl.checked); }
+document.getElementById('qbPath').onclick=()=>{ optPathEl.checked=!optPathEl.checked; syncPathBtn(); };
 
 const rollAxis=new THREE.Vector3();
 let last=performance.now();
