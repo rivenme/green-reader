@@ -254,7 +254,7 @@ const G = 46.0;                  // gravity constant, ~1.4x real so break reads
 // screen-pixel drag for full power — measured in pixels so the feel is the
 // same no matter where the camera sits; capped to ~half the screen on phones
 function maxDragPx(){ return Math.min(240, window.innerWidth*0.55); }
-const MAXSPEED = 17;             // ft/s at full power
+const MAXSPEED = 20;             // ft/s at full power (headroom for big uphill)
 const BALL_R = 0.22;             // render radius (real ball would be invisible)
 
 // ---------------------------------------------------------------------------
@@ -272,8 +272,9 @@ function makeLevel(n){
   const diff = Math.min(1,(n-1)/29);          // ramps to max difficulty by ~level 30
   stimp = userStimp;
 
-  // Real greens: mostly 1-3% slope, 4-5% only in small areas. Tilt caps ~4%.
-  const tiltMag = R(0.008, 0.014) + diff*0.026;
+  // Real greens: mostly 1-3% slope, 4-5% only in small areas. Tilt caps ~3.4%
+  // so even a long uphill putt is reachable at full power on a slow green.
+  const tiltMag = R(0.008, 0.014) + diff*0.020;
   const tiltDir = R(0, Math.PI*2);
   const baseGrad = { x: Math.cos(tiltDir)*tiltMag, y: Math.sin(tiltDir)*tiltMag };
 
@@ -298,13 +299,13 @@ function makeLevel(n){
     const a=R(0,6.28);
     feats.push({t:'tier', x:GW/2+R(-8,8), y:GH/2+R(-6,6),
       nx:Math.cos(a), ny:Math.sin(a),
-      amp:(rnd()<0.5?-1:1)*R(0.35,0.7), w:R(7,10)});
+      amp:(rnd()<0.5?-1:1)*R(0.3,0.55), w:R(7,10)});
   }
   if(n>=3 && rnd()<0.4){
     const a=R(0,6.28);
     feats.push({t:'ridge', x:GW/2+R(-10,10), y:GH/2+R(-8,8),
       nx:Math.cos(a), ny:Math.sin(a),
-      amp:(rnd()<0.6?1:-1)*R(0.2,0.45), sig:R(2.5,4)});
+      amp:(rnd()<0.6?1:-1)*R(0.18,0.35), sig:R(2.5,4)});
   }
 
   // Grass grain: the nap direction. Down-grain rolls faster, into it slower,
@@ -312,38 +313,83 @@ function makeLevel(n){
   const ga=R(0,6.28);
   const grain={hx:Math.cos(ga), hy:Math.sin(ga), mag:R(0.002,0.004)+diff*0.002};
 
-  // Cup placement: real pins sit on reasonably flat ground — take the
-  // flattest of many candidates. If even the flattest spot is severe, gentle
-  // the whole green's tilt (architects cap overall tilt so pins can exist).
+  // ---- PIN & BALL: fresh every play -----------------------------------------
+  // The terrain above is seeded per level (so difficulty is consistent), but
+  // the pin and your ball are placed with REAL randomness — the same level is
+  // a different putt every time you load or replay it.
+  const RR=(a,b)=>a+(b-a)*Math.random();
   const Ltmp={baseGrad, bumps, feats};
-  let hole={x:GW/2, y:7}, bestSl=1e9;
-  for(let attempt=0; attempt<3; attempt++){
-    for(let i=0;i<200;i++){
-      const c={ x:R(GW*0.2, GW*0.8), y:R(5, 14) };
-      const gh=gradOf(Ltmp, c.x, c.y);
-      const sl=Math.hypot(gh.x,gh.y);
-      if(sl<bestSl){ bestSl=sl; hole=c; }
-      if(sl<0.03) break;
-    }
-    if(bestSl<0.045) break;
-    baseGrad.x*=0.75; baseGrad.y*=0.75; bestSl=1e9;
+
+  // Ensure a pinnable flat area exists; if the green is too tilted overall,
+  // gentle it (deterministic, so the level's look stays stable across reloads).
+  const flatExists=()=>{
+    for(let x=GW*0.18;x<=GW*0.82;x+=2.5)
+      for(let y=4;y<=16;y+=2.5){
+        const gh=gradOf(Ltmp,x,y);
+        if(Math.hypot(gh.x,gh.y)<0.035) return true;
+      }
+    return false;
+  };
+  for(let a=0;a<5 && !flatExists();a++){ baseGrad.x*=0.8; baseGrad.y*=0.8; }
+
+  // random pin on flat-enough ground (first good spot wins → truly random)
+  let hole={x:GW/2, y:9}, bestSl=1e9;
+  for(let i=0;i<240;i++){
+    const c={ x:RR(GW*0.18, GW*0.82), y:RR(4, 16) };
+    const gh=gradOf(Ltmp, c.x, c.y);
+    const sl=Math.hypot(gh.x,gh.y);
+    if(sl<0.03){ hole=c; break; }
+    if(sl<bestSl){ bestSl=sl; hole=c; }
   }
 
-  // Ball placement: must be physically reachable at max stroke power even on
-  // a slow (stimp 8) green, including any climb to the cup
-  const mu8=36/16;
-  const reachable=(p)=>{
-    const d=dist(p,hole);
-    const dh=Math.max(0, elevOf(Ltmp,hole.x,hole.y)-elevOf(Ltmp,p.x,p.y));
-    return Math.sqrt(2*mu8*1.15*d + 2*G*dh) < MAXSPEED*0.92;
-  };
-  const minDist = 8 + diff*16;
-  let ballPos=null;
-  for(let i=0;i<300;i++){
-    const p={ x:R(GW*0.2, GW*0.8), y:R(GH-9, GH-4) };
-    if(dist(p,hole)>=minDist && reachable(p)){ ballPos=p; break; }
+  // Ball: random, but GUARANTEED reachable. We don't estimate — we simulate
+  // the real roll (skid + die) at full power on the SLOWEST green the player
+  // can dial up (Stimp 7), over a few candidate lines. If any reaches the cup,
+  // the lie is reachable at every speed setting → "even max power can't get
+  // there" cannot happen.
+  function rollReaches(p, ang, mu){
+    let x=p.x, y=p.y, vx=Math.cos(ang)*MAXSPEED, vy=Math.sin(ang)*MAXSPEED;
+    let rolling=false; const skidU=0.85*MAXSPEED, h=1/120; let minD=1e9;
+    for(let i=0;i<2200;i++){
+      const sp=Math.hypot(vx,vy);
+      if(!rolling && sp<skidU) rolling=true;
+      const g=gradOf(Ltmp,x,y);
+      let gax=-G*g.x, gay=-G*g.y;
+      if(!rolling && sp>1e-3){ const al=(gax*vx+gay*vy)/sp;
+        const px=gax-al*vx/sp, py=gay-al*vy/sp; gax=al*vx/sp+px*0.45; gay=al*vy/sp+py*0.45; }
+      let m=mu; if(!rolling)m*=2.2; if(sp<1.2)m*=1+(1.2-sp)*0.5;
+      let ax=gax, ay=gay; if(sp>1e-3){ ax-=m*vx/sp; ay-=m*vy/sp; }
+      vx+=ax*h; vy+=ay*h; x+=vx*h; y+=vy*h;
+      const d=Math.hypot(x-hole.x,y-hole.y); if(d<minD)minD=d;
+      if(d<0.28) return true;                 // clearly reaches the cup, margin
+      if(Math.hypot(vx,vy)<0.12) break;
+      if(x<-2||x>GW+2||y<-2||y>GH+2) break;
+    }
+    return minD<0.30;
   }
-  if(!ballPos) ballPos={x:GW/2, y:GH-6};
+  const reachable=(p)=>{
+    const base=Math.atan2(hole.y-p.y, hole.x-p.x), mu7=36/14;
+    for(let off=-32; off<=32; off+=4)
+      if(rollReaches(p, base+off*Math.PI/180, mu7)) return true;
+    return false;
+  };
+  // Gather reachable candidate lies at a good distance, then pick one at
+  // random — so the ball is fresh every play AND always physically reachable.
+  const minDist = 8 + diff*14;
+  let cands=[];
+  for(let i=0;i<400 && cands.length<40;i++){
+    const p={ x:RR(GW*0.14, GW*0.86), y:RR(GH*0.42, GH-4) };
+    const d=dist(p,hole);
+    if(d>=minDist && d<=40 && reachable(p)) cands.push(p);
+  }
+  if(!cands.length)                         // relax distance on extreme greens
+    for(let i=0;i<400 && cands.length<20;i++){
+      const p={ x:RR(GW*0.14, GW*0.86), y:RR(GH*0.35, GH-4) };
+      if(dist(p,hole)>=8 && reachable(p)) cands.push(p);
+    }
+  const ballPos = cands.length
+    ? cands[Math.floor(Math.random()*cands.length)]
+    : { x:hole.x, y:Math.min(GH-5, hole.y+10) };
   const par = dist(ballPos,hole) > 24 ? 3 : 2;
   return { n, baseGrad, bumps, feats, grain, hole, ball: ballPos, par, holeR: 0.35 };
 }
@@ -576,7 +622,13 @@ function physics(dt){
     const sp3=Math.hypot(ball.vx,ball.vy);
     const slope=Math.hypot(g.x,g.y);
     if(sp3<0.12 && G*slope<muE*1.02){
-      ball.vx=ball.vy=0; ball.moving=false; onStopped(); return;
+      ball.vx=ball.vy=0; ball.moving=false;
+      // a ball coming to rest overhanging the lip topples in (real rule) —
+      // no more "stuck on the edge, putt again" annoyance
+      if(Math.hypot(ball.x-level.hole.x, ball.y-level.hole.y) < level.holeR+0.09){
+        ball.x=level.hole.x; ball.y=level.hole.y; holed=true; dropT=0; onHoled(); return;
+      }
+      onStopped(); return;
     }
   }
 }
