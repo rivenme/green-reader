@@ -253,8 +253,8 @@ const VS = 2.8;                  // vertical exaggeration (render only)
 const G = 46.0;                  // gravity constant, ~1.4x real so break reads
 // screen-pixel drag for full power — measured in pixels so the feel is the
 // same no matter where the camera sits; capped to ~half the screen on phones
-function maxDragPx(){ return Math.min(240, window.innerWidth*0.55); }
-const MAXSPEED = 20;             // ft/s at full power (headroom for big uphill)
+function maxDragPx(){ return Math.min(185, window.innerWidth*0.48); }
+const MAXSPEED = 22;             // ft/s at full power (headroom for big uphill)
 const BALL_R = 0.22;             // render radius (real ball would be invisible)
 
 // ---------------------------------------------------------------------------
@@ -272,9 +272,9 @@ function makeLevel(n, fixed){
   const diff = Math.min(1,(n-1)/29);          // ramps to max difficulty by ~level 30
   stimp = userStimp;
 
-  // Real greens: mostly 1-3% slope, 4-5% only in small areas. Tilt caps ~3.4%
-  // so even a long uphill putt is reachable at full power on a slow green.
-  const tiltMag = R(0.008, 0.014) + diff*0.020;
+  // Real greens: mostly 1-3% slope, 4-5% only in small areas. Tilt caps ~3%
+  // so even a long uphill putt is comfortably reachable at full power.
+  const tiltMag = R(0.008, 0.014) + diff*0.016;
   const tiltDir = R(0, Math.PI*2);
   const baseGrad = { x: Math.cos(tiltDir)*tiltMag, y: Math.sin(tiltDir)*tiltMag };
 
@@ -287,8 +287,8 @@ function makeLevel(n, fixed){
     const hollow = rnd()<0.45;
     bumps.push({
       x: R(4, GW-4), y: R(4, GH-4),
-      amp: (hollow?-0.6:1) * R(0.15, 0.3+diff*0.3),
-      sig: R(5.0, 10.0),
+      amp: (hollow?-0.6:1) * R(0.15, 0.3+diff*0.18),  // gentler peaks
+      sig: R(6.0, 11.0),                              // broader = lower slope
     });
   }
 
@@ -299,7 +299,7 @@ function makeLevel(n, fixed){
     const a=R(0,6.28);
     feats.push({t:'tier', x:GW/2+R(-8,8), y:GH/2+R(-6,6),
       nx:Math.cos(a), ny:Math.sin(a),
-      amp:(rnd()<0.5?-1:1)*R(0.3,0.55), w:R(7,10)});
+      amp:(rnd()<0.5?-1:1)*R(0.25,0.45), w:R(8,11)});
   }
   if(n>=3 && rnd()<0.4){
     const a=R(0,6.28);
@@ -355,8 +355,11 @@ function makeLevel(n, fixed){
   // the lie is reachable at every speed setting → "even max power can't get
   // there" cannot happen.
   function rollReaches(p, ang, mu){
-    let x=p.x, y=p.y, vx=Math.cos(ang)*MAXSPEED, vy=Math.sin(ang)*MAXSPEED;
-    let rolling=false; const skidU=0.85*MAXSPEED, h=1/120; let minD=1e9;
+    // test at 85% power so an accepted lie has real headroom — the player is
+    // never forced to nail a perfect max-power putt just to reach the cup
+    const v0=0.85*MAXSPEED;
+    let x=p.x, y=p.y, vx=Math.cos(ang)*v0, vy=Math.sin(ang)*v0;
+    let rolling=false; const skidU=0.85*v0, h=1/120; let minD=1e9;
     for(let i=0;i<2200;i++){
       const sp=Math.hypot(vx,vy);
       if(!rolling && sp<skidU) rolling=true;
@@ -1200,7 +1203,7 @@ function currentAim(){
   // power from SCREEN pixels with a mild ease-out: a comfortable pull covers
   // most putts and the feel doesn't change with camera angle or distance
   const drag=Math.hypot(aimNowPx.x-aimStartPx.x, aimNowPx.y-aimStartPx.y);
-  const power=Math.min(1, Math.pow(drag/maxDragPx(), 0.85));
+  const power=Math.min(1, Math.pow(drag/maxDragPx(), 0.80));
   if(power<0.02) return null;
   const ang=Math.atan2(dz,dx);
   const sp=power*MAXSPEED;
