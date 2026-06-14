@@ -90,6 +90,16 @@
     padding:8px; font-size:11px; color:var(--muted); text-align:left;
   }
   .badge.got{ border-color:var(--accent); color:var(--ink); background:#22331f; }
+  .lkh{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--muted);
+    margin:12px 0 6px; text-align:left; }
+  .lkgrid{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .lk{ background:#1a241c; border:1px solid rgba(255,255,255,.08); border-radius:8px;
+    padding:9px; font-size:12px; color:var(--ink); cursor:pointer; text-align:center; }
+  .lk:hover{ border-color:var(--accent); }
+  .lk.lock{ color:var(--muted); cursor:default; opacity:.7; }
+  .lk.lock:hover{ border-color:rgba(255,255,255,.08); }
+  .lk.eq{ border-color:var(--accent); background:#22331f; color:var(--accent); font-weight:600; }
+  .lk small{ color:var(--muted); }
   #topHud{
     position:fixed; top:6px; left:50%; transform:translateX(-50%); z-index:11;
     text-align:center; pointer-events:none; text-shadow:0 2px 8px rgba(0,0,0,.85);
@@ -219,6 +229,12 @@
     <div id="badgeGrid"></div>
     <button id="badgesClose" style="margin-top:14px">Close</button>
   </div></div>
+  <div id="locker" class="overlay hidden"><div class="ovcard">
+    <h2 style="margin-top:0">🎽 Locker</h2>
+    <div class="lkh">Ball</div><div id="ballGrid" class="lkgrid"></div>
+    <div class="lkh">Green</div><div id="themeGrid" class="lkgrid"></div>
+    <button id="lockerClose" style="margin-top:14px">Close</button>
+  </div></div>
   <div id="topHud">
     <div class="vspar"><span id="hudVsPar">E</span> <small>vs par</small></div>
     <div class="runline careerOnly"><b id="runScore">0</b> pts <span class="stk" id="runStreak">—</span></div>
@@ -264,6 +280,7 @@
       <h2>Mode</h2>
       <div class="modeRow">
         <button class="modeTab" id="btnCareer">⛳ Career</button>
+        <button class="modeTab" id="btnDaily">🗓 Daily</button>
         <button class="modeTab" id="btnPractice">🎯 Practice</button>
       </div>
       <div class="careerBlock">
@@ -274,6 +291,7 @@
         <div class="row"><span>Best run</span><b id="uiBest">0</b></div>
         <div class="row"><span>Badges</span><b id="uiBadges">0/12</b></div>
         <button id="btnBadges">🏅 View badges</button>
+        <button id="btnLocker">🎽 Locker</button>
       </div>
       <hr/>
       <h2>Hole</h2>
@@ -361,10 +379,11 @@ let nextLevelTimer=null;         // post-hole advance timer, cancelled on menu
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
 
-function makeLevel(n, fixed){
-  const rnd = mulberry32(0x9e37 + n*2654435761 >>> 0);
+function makeLevel(n, fixed, seed){
+  const isDaily = (seed!=null);              // daily: terrain + pin + ball all seeded by date
+  const rnd = mulberry32(isDaily ? (seed>>>0) : (0x9e37 + n*2654435761 >>> 0));
   const R = (a,b)=>a+(b-a)*rnd();
-  const diff = Math.min(1,(n-1)/29);          // ramps to max difficulty by ~level 30
+  const diff = isDaily ? 0.5 : Math.min(1,(n-1)/29);   // ramps to max by ~level 30; daily = moderate
   stimp = userStimp;
 
   // Real greens: mostly 1-3% slope, 4-5% only in small areas. Tilt caps ~3%
@@ -409,10 +428,10 @@ function makeLevel(n, fixed){
   const grain={hx:Math.cos(ga), hy:Math.sin(ga), mag:R(0.002,0.004)+diff*0.002};
 
   // ---- PIN & BALL: fresh every play -----------------------------------------
-  // The terrain above is seeded per level (so difficulty is consistent), but
-  // the pin and your ball are placed with REAL randomness — the same level is
-  // a different putt every time you load or replay it.
-  const RR=(a,b)=>a+(b-a)*Math.random();
+  // The terrain above is seeded per level (so difficulty is consistent). For a
+  // normal level the pin & ball are placed with REAL randomness (fresh every
+  // play); for the daily they continue the seeded sequence (same for everyone).
+  const RR = isDaily ? R : ((a,b)=>a+(b-a)*Math.random());
   const Ltmp={baseGrad, bumps, feats};
 
   // Ensure a pinnable flat area exists; if the green is too tilted overall,
@@ -492,11 +511,12 @@ function makeLevel(n, fixed){
       const p={ x:RR(GW*0.14, GW*0.86), y:RR(GH*0.35, GH-4) };
       if(dist(p,hole)>=8 && reachable(p)) cands.push(p);
     }
+  const pick = isDaily ? rnd() : Math.random();    // daily picks deterministically
   const ballPos = cands.length
-    ? cands[Math.floor(Math.random()*cands.length)]
+    ? cands[Math.floor(pick*cands.length)]
     : { x:hole.x, y:Math.min(GH-5, hole.y+10) };
   const par = dist(ballPos,hole) > 24 ? 3 : 2;
-  return { n, baseGrad, bumps, feats, grain, hole, ball: ballPos, par, holeR: 0.35 };
+  return { n, baseGrad, bumps, feats, grain, hole, ball: ballPos, par, holeR: 0.35, diff };
 }
 
 function elevOf(L,fx,fy){
@@ -736,6 +756,62 @@ function renderBadges(){
     const got=career.ach.includes(a.id);
     return `<div class="badge${got?' got':''}">${got?'🏅':'🔒'} ${a.label}</div>`;
   }).join('');
+}
+
+// ---- cosmetics (Phase 4) ---------------------------------------------------
+function currentBall(){ return BALL_SKINS.find(b=>b.id===career.ball)||BALL_SKINS[0]; }
+function currentTheme(){ return GREEN_THEMES.find(t=>t.id===career.theme)||GREEN_THEMES[0]; }
+function applyCosmetics(){
+  const b=currentBall(), t=currentTheme();
+  ballMesh.material.color.set(b.color);
+  trailLine.material.color.set(b.trail);
+  scene.background.set(t.bg);
+  if(scene.fog) scene.fog.color.set(t.bg);
+  if(level) buildTerrain();
+}
+function renderLocker(){
+  const mk=(items, kind, sel)=>items.map(it=>{
+    const lk=isUnlocked(it, career.xp), eq=(it.id===sel);
+    return `<div class="lk${lk?'':' lock'}${eq?' eq':''}" data-kind="${kind}" data-id="${it.id}">`+
+      `${eq?'✓ ':lk?'':'🔒 '}${it.name}${lk?'':'<br><small>'+it.xp.toLocaleString()+' XP</small>'}</div>`;
+  }).join('');
+  document.getElementById('ballGrid').innerHTML=mk(BALL_SKINS,'ball',career.ball);
+  document.getElementById('themeGrid').innerHTML=mk(GREEN_THEMES,'theme',career.theme);
+}
+function equipItem(kind, id){
+  const list=(kind==='ball')?BALL_SKINS:GREEN_THEMES;
+  const it=list.find(x=>x.id===id);
+  if(!it || !isUnlocked(it, career.xp)) return;
+  if(kind==='ball') career.ball=id; else career.theme=id;
+  saveCareer(); applyCosmetics(); renderLocker();
+}
+
+// ---- daily challenge (Phase 5) ---------------------------------------------
+let daily=(()=>{ try{ return JSON.parse(localStorage.getItem('gr3d-daily')||'{}'); }catch(e){ return {}; } })();
+function todaySeed(){ const d=new Date(); return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate(); }
+function dailyBest(){ return (daily.date===todaySeed()) ? (daily.best||0) : 0; }
+function setDailyBest(score){
+  const s=todaySeed();
+  if(daily.date!==s) daily={date:s, best:0};
+  if(score>daily.best) daily.best=score;
+  try{ localStorage.setItem('gr3d-daily', JSON.stringify(daily)); }catch(e){}
+}
+// Daily holes earn achievements (one-time) but not farmable XP.
+function dailyProgress(r){
+  const ctx={ tier:r.tier, bomb:r.bomb, streak:streakCount, onePuttStreak:0,
+    level:1, cleared50:false, daily:true, runScore, xp:career.xp };
+  for(const id of newlyEarned(ctx, career.ach)){
+    career.ach.push(id);
+    toast('🏅 '+ACHIEVEMENTS.find(a=>a.id===id).label);
+  }
+  saveCareer(); updateCareerUI();
+}
+function dailyResult(){
+  const sc=runScore, prev=dailyBest(), isBest=sc>prev;
+  setDailyBest(sc);
+  showMsg('🗓 Daily complete',
+    `Score <b style="color:var(--accent)">${sc.toLocaleString()}</b>${isBest?' · <b style="color:#ffd84a">NEW BEST!</b>':''}<br>`+
+    `Today's best: ${dailyBest().toLocaleString()} · Press ↺ to try again`);
 }
 
 // ---- session stats vs PGA Tour ----------------------------------------------
@@ -1020,12 +1096,13 @@ function buildTerrain(){
   const rng=(mx-mn)||1;
 
   const colors=new Float32Array(pos.count*3);
+  const tn=currentTheme().tint;                 // green-theme colour multiplier
   for(let i=0;i<pos.count;i++){
     const fx=pos.getX(i), fz=pos.getZ(i);
     const h=elev(fx,fz);
     pos.setY(i, h*VS);
     const [r,g,b]=heightColor((h-mn)/rng);
-    colors[i*3]=r; colors[i*3+1]=g; colors[i*3+2]=b;
+    colors[i*3]=Math.min(1,r*tn[0]); colors[i*3+1]=Math.min(1,g*tn[1]); colors[i*3+2]=Math.min(1,b*tn[2]);
   }
   geo.setAttribute('color', new THREE.BufferAttribute(colors,3));
   geo.computeVertexNormals();
@@ -1556,7 +1633,7 @@ function hideMsg(){document.getElementById('msg').style.display='none';}
 
 function onHoled(){
   sndDrop();
-  if(mode==='career') celebrate();
+  if(mode==='career'||mode==='daily') celebrate();
   if(puttStart){ recordPutt(puttStart.d, true); puttStart=null; }
   const sg=expPutts(firstPuttD)-strokes;
   sessionSG+=sg;
@@ -1564,12 +1641,13 @@ function onHoled(){
   const sc=strokes-level.par;
   totalVsPar+=sc;
   const term=({'-2':'Eagle!','-1':'Birdie!','0':'Par','1':'Bogey','2':'Double bogey'})[sc]||(sc<0?'Great!':'+'+sc);
-  if(mode!=='career') showMsg(`⛳ Holed in ${strokes}`,
+  if(mode==='practice') showMsg(`⛳ Holed in ${strokes}`,
     `${term} · SG ${sg>=0?'+':''}${sg.toFixed(2)} vs PGA from ${firstPuttD.toFixed(0)} ft. `+
     `${LV<50?'Next level loading…':'Final hole complete!'}`);
   updateUI();
   nextLevelTimer=setTimeout(()=>{
-    if(LV<50) loadLevel(LV+1);
+    if(mode==='daily') dailyResult();
+    else if(LV<50) loadLevel(LV+1);
     else if(mode==='career') runSummary();
     else showMsg('🏆 Course complete!', `Total vs par: ${fmtVsPar(totalVsPar)}. Press Replay to play again.`);
   }, 1600);
@@ -1594,7 +1672,7 @@ function onStopped(){
 // Career celebration: scale the juice to the hole result and bank points.
 function celebrate(){
   streakCount = nextStreak(streakCount, strokes, level.par);
-  const r = holeScore({ distFt:firstPuttD, diff:Math.min(1,(LV-1)/29),
+  const r = holeScore({ distFt:firstPuttD, diff:level.diff,
     stimp, strokes, par:level.par, streak:streakCount });
   runScore += r.points;
   setRunScore(runScore);
@@ -1619,7 +1697,7 @@ function celebrate(){
   const sEl=document.getElementById('runStreak');
   sEl.textContent = streakCount>=2 ? ('🔥 ×'+streakCount) : '—';
 
-  careerProgress(r);
+  if(mode==='daily') dailyProgress(r); else careerProgress(r);
 }
 
 let camAnim=null;
@@ -1644,9 +1722,9 @@ function snapCamera(animate){
   }
 }
 
-function loadLevel(n, fixed){
+function loadLevel(n, fixed, seed){
   LV=n;
-  level=makeLevel(n, fixed);
+  level=makeLevel(n, fixed, seed);
   ball.x=level.ball.x; ball.y=level.ball.y;
   ball.vx=ball.vy=0; ball.moving=false; ball.rolling=true;
   strokes=0; holed=false; dropT=1; aiming=false; aimPlanePt=null;
@@ -1665,6 +1743,13 @@ function loadLevel(n, fixed){
 // replay keeps the same pin & ball so you can retry the exact line
 function replayLevel(){
   if(mode==='career') return;   // Career = one shot per level
+  if(mode==='daily'){           // retry the same daily hole, fresh score
+    runScore=0; streakCount=0; scoreShown=0; scoreTarget=0; setRunScore(0);
+    document.getElementById('runScore').textContent='0';
+    document.getElementById('runStreak').textContent='—';
+    loadLevel(1, null, todaySeed());
+    return;
+  }
   loadLevel(LV, { hole:level.hole, ball:level.ball });
 }
 document.getElementById('btnRetry').onclick=()=>replayLevel();
@@ -1834,25 +1919,33 @@ function tickScore(){
   }
 }
 // Mode is selected from tabs in the side panel (no separate menu screen).
-const modeTabs={ career:document.getElementById('btnCareer'), practice:document.getElementById('btnPractice') };
+const modeTabs={ career:document.getElementById('btnCareer'), practice:document.getElementById('btnPractice'), daily:document.getElementById('btnDaily') };
 function startMode(m){
   mode=m;
   clearTimeout(nextLevelTimer); nextLevelTimer=null;
   document.getElementById('hdr').style.display='none';   // keep the top of the screen clean
-  document.body.classList.toggle('careerMode', m==='career');
-  modeTabs.career.classList.toggle('active', m==='career');
-  modeTabs.practice.classList.toggle('active', m==='practice');
+  const scored = (m==='career'||m==='daily');            // career & daily show score + career UI
+  document.body.classList.toggle('careerMode', scored);
+  ['career','practice','daily'].forEach(k=>modeTabs[k].classList.toggle('active', m===k));
+  document.getElementById('qbRetry').style.display = (m==='career') ? 'none' : '';
   totalVsPar=0; runScore=0; streakCount=0; scoreShown=0; scoreTarget=0;
   runStats=freshRun();
   document.getElementById('runScore').textContent='0';
   document.getElementById('runStreak').textContent='—';
   updateCareerUI();
-  loadLevel(1);
+  if(m==='daily') loadLevel(1, null, todaySeed());
+  else loadLevel(1);
 }
 modeTabs.career.onclick=()=>startMode('career');
 modeTabs.practice.onclick=()=>startMode('practice');
+modeTabs.daily.onclick=()=>startMode('daily');
 document.getElementById('btnBadges').onclick=()=>{ renderBadges(); document.getElementById('badges').classList.remove('hidden'); };
 document.getElementById('badgesClose').onclick=()=>document.getElementById('badges').classList.add('hidden');
+document.getElementById('btnLocker').onclick=()=>{ renderLocker(); document.getElementById('locker').classList.remove('hidden'); };
+document.getElementById('lockerClose').onclick=()=>document.getElementById('locker').classList.add('hidden');
+document.getElementById('ballGrid').onclick=e=>{ const el=e.target.closest('[data-id]'); if(el) equipItem(el.dataset.kind, el.dataset.id); };
+document.getElementById('themeGrid').onclick=e=>{ const el=e.target.closest('[data-id]'); if(el) equipItem(el.dataset.kind, el.dataset.id); };
+applyCosmetics();
 
 // boot
 onResize();
