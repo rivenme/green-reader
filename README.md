@@ -19,7 +19,28 @@ xdg-open golf-putting-game/index.html  # Linux
 # or just double-click the file
 ```
 
-### 🏔 3D version (`3d.html`)
+### 🎮 Career mode (3D)
+
+The 3D version has three modes, picked from tabs in the side panel (tap **☰**):
+
+- **⛳ Career** — climb all 50 levels for a high score. Each holed putt scores
+  `distance × difficulty × stroke-tier × streak` and fires a celebration
+  (🔥 ONE PUTT! / 💣 BOMB! / BIRDIE! / PAR) with a pop-up score, confetti and a
+  chime. A par-or-better **streak** multiplies your score. One shot per level —
+  no retries. Clear level 50 for an end-of-run recap. Lifetime points earn
+  **XP & ranks** (Weekend Hacker → … → Legend), and there are **12 achievement
+  badges** and a **Locker** of unlockable ball colours, trails and green themes.
+- **🗓 Daily** — one date-seeded green that's the same for everyone that day;
+  unlimited tries to beat your daily best.
+- **🎯 Practice** — pure learning: caddie card, best-line guide, free retries,
+  no score pressure.
+
+Progress (XP, badges, best run, daily best, equipped cosmetics) is saved in your
+browser's `localStorage`. The big top number is your **vs-par** score; the small
+line is your **run points + streak**. **➰** toggles the predicted break path and
+**↺** replays the hole (Practice/Daily).
+
+### 🏔 3D rendering (`3d.html`)
 
 The same physics rendered as a **real 3D green** (Three.js): walk/orbit around
 the putt to read the slope like a pro — drag anywhere to orbit the camera,
