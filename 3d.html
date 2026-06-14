@@ -62,6 +62,34 @@
   .modeTab.active{ background:#2f6f36; border-color:var(--accent); }
   .careerOnly{ display:none; }
   body.careerMode .careerOnly{ display:flex; }
+  .careerBlock{ display:none; }
+  body.careerMode .careerBlock{ display:block; }
+  #toasts{
+    position:fixed; top:62px; left:50%; transform:translateX(-50%); z-index:12;
+    display:flex; flex-direction:column; gap:6px; align-items:center; pointer-events:none;
+  }
+  .toast{
+    background:rgba(24,33,26,.94); border:1px solid var(--accent); color:var(--ink);
+    border-radius:20px; padding:7px 16px; font-size:13px; font-weight:600;
+    opacity:0; transform:translateY(-8px); transition:.35s; box-shadow:0 4px 16px rgba(0,0,0,.5);
+  }
+  .toast.show{ opacity:1; transform:translateY(0); }
+  .toast.big{ font-size:15px; border-color:#ffd84a; color:#ffd84a; }
+  .overlay{
+    position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center;
+    background:rgba(6,10,7,.7); backdrop-filter:blur(3px);
+  }
+  .overlay.hidden{ display:none; }
+  .ovcard{
+    background:var(--panel); border:1px solid rgba(255,255,255,.1); border-radius:14px;
+    padding:20px 22px; width:min(420px,90vw); max-height:84vh; overflow-y:auto; text-align:center;
+  }
+  #badgeGrid{ display:grid; grid-template-columns:1fr 1fr; gap:7px; }
+  .badge{
+    background:#1a241c; border:1px solid rgba(255,255,255,.08); border-radius:8px;
+    padding:8px; font-size:11px; color:var(--muted); text-align:left;
+  }
+  .badge.got{ border-color:var(--accent); color:var(--ink); background:#22331f; }
   #topHud{
     position:fixed; top:6px; left:50%; transform:translateX(-50%); z-index:11;
     text-align:center; pointer-events:none; text-shadow:0 2px 8px rgba(0,0,0,.85);
@@ -185,6 +213,12 @@
 <body>
   <canvas id="fx"></canvas>
   <div id="bigText"></div>
+  <div id="toasts"></div>
+  <div id="badges" class="overlay hidden"><div class="ovcard">
+    <h2 style="margin-top:0">🏅 Badges</h2>
+    <div id="badgeGrid"></div>
+    <button id="badgesClose" style="margin-top:14px">Close</button>
+  </div></div>
   <div id="topHud">
     <div class="vspar"><span id="hudVsPar">E</span> <small>vs par</small></div>
     <div class="runline careerOnly"><b id="runScore">0</b> pts <span class="stk" id="runStreak">—</span></div>
@@ -231,6 +265,15 @@
       <div class="modeRow">
         <button class="modeTab" id="btnCareer">⛳ Career</button>
         <button class="modeTab" id="btnPractice">🎯 Practice</button>
+      </div>
+      <div class="careerBlock">
+        <hr/>
+        <h2>Career</h2>
+        <div class="row"><span>Rank</span><b id="uiRank">Weekend Hacker</b></div>
+        <div class="row"><span>XP</span><b id="uiXp">0</b></div>
+        <div class="row"><span>Best run</span><b id="uiBest">0</b></div>
+        <div class="row"><span>Badges</span><b id="uiBadges">0/12</b></div>
+        <button id="btnBadges">🏅 View badges</button>
       </div>
       <hr/>
       <h2>Hole</h2>
@@ -568,6 +611,132 @@ function holeScore({distFt, diff, stimp, strokes, par, streak}){
   return { tier, bomb:isBomb, points: Math.round(pts) };
 }
 // === END SCORING ENGINE =====================================================
+
+// === CAREER META (pure progression — see test/career.test.mjs) ==============
+// Ranks by lifetime XP (= lifetime points scored).
+const RANKS=[
+  {xp:0,      name:'Weekend Hacker'},
+  {xp:5000,   name:'Bogey Golfer'},
+  {xp:20000,  name:'Scratch'},
+  {xp:60000,  name:'Club Champion'},
+  {xp:150000, name:'Tour Pro'},
+  {xp:400000, name:'Legend'},
+];
+function rankFor(xp){ let r=RANKS[0]; for(const k of RANKS) if(xp>=k.xp) r=k; return r; }
+function nextRank(xp){ for(const k of RANKS) if(xp<k.xp) return k; return null; }
+// Progress 0..1 toward the next rank (1 at max rank).
+function rankProgress(xp){
+  const cur=rankFor(xp), nx=nextRank(xp);
+  if(!nx) return 1;
+  return (xp-cur.xp)/(nx.xp-cur.xp);
+}
+// Achievements: each tests a "ctx" of accumulated run/event facts.
+const ACHIEVEMENTS=[
+  {id:'firstBirdie', label:'First Birdie',            test:c=>c.tier==='birdie'||c.tier==='onePutt'},
+  {id:'firstOnePutt',label:'First One-Putt',          test:c=>c.tier==='onePutt'},
+  {id:'bomb',        label:'Bomber · 25ft+ drain',    test:c=>c.bomb},
+  {id:'streak3',     label:'On Fire · 3 streak',      test:c=>c.streak>=3},
+  {id:'streak5',     label:'Unconscious · 5 streak',  test:c=>c.streak>=5},
+  {id:'onePutt3',    label:'Hot Putter · 3 one-putts',test:c=>c.onePuttStreak>=3},
+  {id:'reach25',     label:'Halfway · level 25',      test:c=>c.level>=25},
+  {id:'clear50',     label:'Course Conqueror · lvl 50',test:c=>c.cleared50},
+  {id:'daily',       label:'Daily Grinder',           test:c=>c.daily},
+  {id:'run5k',       label:'5,000 in a run',          test:c=>c.runScore>=5000},
+  {id:'run15k',      label:'15,000 in a run',         test:c=>c.runScore>=15000},
+  {id:'tourPro',     label:'Tour Pro',                test:c=>c.xp>=150000},
+];
+// Returns the achievement ids newly earned given ctx and already-earned list.
+function newlyEarned(ctx, owned){
+  return ACHIEVEMENTS.filter(a=>!owned.includes(a.id) && a.test(ctx)).map(a=>a.id);
+}
+// Cosmetic unlocks gated by lifetime XP.
+const BALL_SKINS=[
+  {id:'white', name:'Classic', xp:0,      color:'#ffffff', trail:'#ffffff'},
+  {id:'sunset',name:'Sunset',  xp:5000,   color:'#ff9a4a', trail:'#ffce5a'},
+  {id:'flame', name:'Flame',   xp:20000,  color:'#ff5a4a', trail:'#ff8a5a'},
+  {id:'ice',   name:'Ice',     xp:60000,  color:'#7fd0ff', trail:'#bfe8ff'},
+  {id:'gold',  name:'Gold',    xp:150000, color:'#ffd84a', trail:'#fff0a0'},
+];
+const GREEN_THEMES=[
+  {id:'classic', name:'Bentgrass', xp:0,      tint:[1,1,1],       bg:0x0c120d},
+  {id:'twilight',name:'Twilight',  xp:10000,  tint:[0.8,0.85,1.2],bg:0x0b0f1a},
+  {id:'desert',  name:'Desert',    xp:40000,  tint:[1.2,1.05,0.7],bg:0x161008},
+  {id:'augusta', name:'Augusta',   xp:100000, tint:[0.85,1.2,0.8],bg:0x081207},
+];
+function isUnlocked(item, xp){ return xp>=item.xp; }
+// === END CAREER META ========================================================
+
+// ---- career runtime: persistence, run stats, toasts, progression -----------
+const CAREER_DEFAULTS={ xp:0, bestRun:0, runs:0, ach:[], ball:'white', theme:'classic' };
+let career=(()=>{ try{ return Object.assign({}, CAREER_DEFAULTS,
+  JSON.parse(localStorage.getItem('gr3d-career')||'{}')); }
+  catch(e){ return Object.assign({}, CAREER_DEFAULTS); } })();
+function saveCareer(){ try{ localStorage.setItem('gr3d-career', JSON.stringify(career)); }catch(e){} }
+function freshRun(){ return { onePutts:0, longest:0, best:0, holes:0, onePuttStreak:0 }; }
+let runStats=freshRun();
+
+function toast(msg, big){
+  const el=document.createElement('div');
+  el.className='toast'+(big?' big':'');
+  el.textContent=msg;
+  document.getElementById('toasts').appendChild(el);
+  void el.offsetWidth; el.classList.add('show');
+  setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),400); }, 2600);
+}
+
+// Called once per holed putt in Career/Daily (after celebrate computes result r).
+function careerProgress(r){
+  runStats.holes++;
+  if(r.tier==='onePutt'){ runStats.onePutts++; runStats.onePuttStreak++; } else runStats.onePuttStreak=0;
+  runStats.longest=Math.max(runStats.longest, streakCount);
+  runStats.best=Math.max(runStats.best, r.points);
+  const oldRank=rankFor(career.xp).name;
+  career.xp += r.points;                 // bestRun is set at run completion (runSummary)
+  const ctx={ tier:r.tier, bomb:r.bomb, streak:streakCount, onePuttStreak:runStats.onePuttStreak,
+    level:LV, cleared50:false, daily:(mode==='daily'), runScore, xp:career.xp };
+  for(const id of newlyEarned(ctx, career.ach)){
+    career.ach.push(id);
+    toast('🏅 '+ACHIEVEMENTS.find(a=>a.id===id).label);
+  }
+  if(rankFor(career.xp).name!==oldRank) toast('⭐ RANK UP — '+rankFor(career.xp).name, true);
+  saveCareer();
+  updateCareerUI();
+}
+
+// End-of-run recap (cleared level 50).
+function runSummary(){
+  const ctx={ tier:'', bomb:false, streak:streakCount, onePuttStreak:runStats.onePuttStreak,
+    level:50, cleared50:true, daily:(mode==='daily'), runScore, xp:career.xp };
+  for(const id of newlyEarned(ctx, career.ach)){
+    career.ach.push(id);
+    toast('🏅 '+ACHIEVEMENTS.find(a=>a.id===id).label);
+  }
+  career.runs++;
+  const isBest = runScore>career.bestRun;
+  if(isBest) career.bestRun=runScore;
+  saveCareer(); updateCareerUI();
+  showMsg('🏆 Run complete!',
+    `Score <b style="color:var(--accent)">${runScore.toLocaleString()}</b>${isBest?' · <b style="color:#ffd84a">NEW BEST!</b>':''}<br>`+
+    `One-putts ${runStats.onePutts} · Longest streak ${runStats.longest} · Best hole ${runStats.best.toLocaleString()}<br>`+
+    `Rank: <b style="color:var(--accent)">${rankFor(career.xp).name}</b> · Pick a mode to play again`);
+}
+
+function updateCareerUI(){
+  const r=rankFor(career.xp), nx=nextRank(career.xp);
+  document.getElementById('uiRank').textContent=r.name;
+  document.getElementById('uiXp').textContent=Math.round(career.xp).toLocaleString()+(nx?(' / '+nx.xp.toLocaleString()):' (max)');
+  document.getElementById('uiBest').textContent=Math.round(career.bestRun).toLocaleString();
+  document.getElementById('uiBadges').textContent=career.ach.length+'/'+ACHIEVEMENTS.length;
+}
+
+// Badges overlay
+function renderBadges(){
+  const grid=document.getElementById('badgeGrid');
+  grid.innerHTML=ACHIEVEMENTS.map(a=>{
+    const got=career.ach.includes(a.id);
+    return `<div class="badge${got?' got':''}">${got?'🏅':'🔒'} ${a.label}</div>`;
+  }).join('');
+}
 
 // ---- session stats vs PGA Tour ----------------------------------------------
 // PGA expected putts by distance (Broadie) and make % per bucket.
@@ -1399,7 +1568,11 @@ function onHoled(){
     `${term} · SG ${sg>=0?'+':''}${sg.toFixed(2)} vs PGA from ${firstPuttD.toFixed(0)} ft. `+
     `${LV<50?'Next level loading…':'Final hole complete!'}`);
   updateUI();
-  nextLevelTimer=setTimeout(()=>{ if(LV<50) loadLevel(LV+1); else showMsg('🏆 Course complete!', `Total vs par: ${fmtVsPar(totalVsPar)}. Press Replay to play again.`); }, 1600);
+  nextLevelTimer=setTimeout(()=>{
+    if(LV<50) loadLevel(LV+1);
+    else if(mode==='career') runSummary();
+    else showMsg('🏆 Course complete!', `Total vs par: ${fmtVsPar(totalVsPar)}. Press Replay to play again.`);
+  }, 1600);
 }
 function onStopped(){
   if(puttStart){
@@ -1445,6 +1618,8 @@ function celebrate(){
 
   const sEl=document.getElementById('runStreak');
   sEl.textContent = streakCount>=2 ? ('🔥 ×'+streakCount) : '—';
+
+  careerProgress(r);
 }
 
 let camAnim=null;
@@ -1668,12 +1843,16 @@ function startMode(m){
   modeTabs.career.classList.toggle('active', m==='career');
   modeTabs.practice.classList.toggle('active', m==='practice');
   totalVsPar=0; runScore=0; streakCount=0; scoreShown=0; scoreTarget=0;
+  runStats=freshRun();
   document.getElementById('runScore').textContent='0';
   document.getElementById('runStreak').textContent='—';
+  updateCareerUI();
   loadLevel(1);
 }
 modeTabs.career.onclick=()=>startMode('career');
 modeTabs.practice.onclick=()=>startMode('practice');
+document.getElementById('btnBadges').onclick=()=>{ renderBadges(); document.getElementById('badges').classList.remove('hidden'); };
+document.getElementById('badgesClose').onclick=()=>document.getElementById('badges').classList.add('hidden');
 
 // boot
 onResize();
