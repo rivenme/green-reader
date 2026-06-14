@@ -57,6 +57,59 @@
     color:var(--muted);margin:0 0 8px;font-weight:600;}
   .card .row b{font-size:15px;}
   .card.hidden{display:none;}
+  #startScreen{
+    position:fixed; inset:0; z-index:50;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:18px; background:radial-gradient(1000px 700px at 50% 30%,#1c2a1d,#0a0e0a);
+    text-align:center;
+  }
+  #startScreen.hidden{display:none;}
+  #startScreen h1{font-size:30px; margin:0;}
+  #startScreen .tag{color:var(--muted); font-size:13px; margin:-6px 0 10px;}
+  #startScreen .modeBtn{
+    width:240px; padding:16px; border-radius:12px; font-size:16px; cursor:pointer;
+    background:#243a27; color:var(--ink); border:1px solid rgba(255,255,255,.12);
+    transition:.15s;
+  }
+  #startScreen .modeBtn:hover{ background:#2d4a30; border-color:var(--accent); }
+  #startScreen .modeBtn.primary{ background:#2f6f36; border-color:#3f8f46; }
+  #startScreen .modeBtn small{ display:block; font-size:11px; color:var(--muted); margin-top:4px; font-weight:400; }
+  #toMenu{
+    position:fixed; top:8px; left:8px; z-index:11;
+    background:rgba(24,33,26,.88); backdrop-filter:blur(8px);
+    border:1px solid rgba(255,255,255,.12); color:var(--ink);
+    border-radius:8px; padding:6px 10px; font-size:12px; cursor:pointer; display:none;
+  }
+  #fx{ position:fixed; inset:0; z-index:9; pointer-events:none; }
+  #runHud{
+    position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:11;
+    display:none; text-align:center; text-shadow:0 2px 8px rgba(0,0,0,.8);
+    font-variant-numeric:tabular-nums;
+  }
+  #runHud .score{ font-size:26px; font-weight:700; color:var(--accent); }
+  #runHud .streak{ font-size:13px; color:#ffce5a; min-height:16px; }
+  #bigText{
+    position:fixed; top:38%; left:50%; transform:translate(-50%,-50%) scale(1);
+    z-index:11; pointer-events:none; font-size:46px; font-weight:800;
+    text-shadow:0 3px 16px rgba(0,0,0,.9); opacity:0; letter-spacing:1px;
+  }
+  @keyframes bigPunch{
+    0%{opacity:0; transform:translate(-50%,-50%) scale(.4);}
+    20%{opacity:1; transform:translate(-50%,-50%) scale(1.15);}
+    70%{opacity:1; transform:translate(-50%,-50%) scale(1);}
+    100%{opacity:0; transform:translate(-50%,-50%) scale(1);}
+  }
+  #bigText.show{ animation:bigPunch 1.4s ease-out forwards; }
+  .scorePop{
+    position:fixed; z-index:11; pointer-events:none; font-weight:700; font-size:22px;
+    color:#fff; text-shadow:0 2px 8px rgba(0,0,0,.9);
+  }
+  @keyframes popRise{
+    0%{opacity:0; transform:translate(-50%,0) scale(.7);}
+    15%{opacity:1; transform:translate(-50%,-10px) scale(1);}
+    100%{opacity:0; transform:translate(-50%,-70px) scale(1);}
+  }
+  .scorePop.show{ animation:popRise 1.2s ease-out forwards; }
 
   #scoreChip{
     display:none;
@@ -145,6 +198,18 @@
 </script>
 </head>
 <body>
+  <div id="startScreen">
+    <h1>⛳ <span style="color:var(--accent)">Green Reader 3D</span></h1>
+    <div class="tag">Read the slope. Judge the speed. Sink the putt.</div>
+    <button class="modeBtn primary" id="btnCareer">⛳ Career
+      <small>Climb 50 levels · score, streaks, celebrations</small></button>
+    <button class="modeBtn" id="btnPractice">🎯 Practice
+      <small>Pure learning · caddie card, best line, free retries</small></button>
+  </div>
+  <button id="toMenu">← Menu</button>
+  <canvas id="fx"></canvas>
+  <div id="runHud"><div class="score" id="runScore">0</div><div class="streak" id="runStreak"></div></div>
+  <div id="bigText"></div>
   <div class="stage" id="stage">
     <div class="msg" id="msg" style="display:none"><div id="msgText"></div></div>
   </div>
@@ -262,6 +327,8 @@ const BALL_R = 0.22;             // render radius (real ball would be invisible)
 // ---------------------------------------------------------------------------
 let level=null, LV=1;
 let userStimp=10, stimp=10;      // Stimp 10 ≈ a well-kept members' club green
+let mode='menu';                 // 'menu' | 'career' | 'practice'
+let nextLevelTimer=null;         // post-hole advance timer, cancelled on menu
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
@@ -489,8 +556,33 @@ let strokes=0, totalVsPar=0, holed=false, dropT=1;
 let aiming=false, aimPlanePt=null, aimStartPx=null, aimNowPx=null;
 let trailPts=[];
 let puttStart=null, firstPuttD=0, sessionSG=0; // strokes-gained bookkeeping
+let runScore=0, streakCount=0;   // career run total + consecutive par-or-better
 
 function frictionDecel(){ const v0=6.0; return (v0*v0)/(2*stimp); }
+
+// === SCORING ENGINE (pure, testable — see test/scoring.test.mjs) ============
+// Result tier from strokes vs par; a one-putt (1 stroke) is its own top tier.
+function resultTier(strokes, par){
+  if(strokes <= 1) return 'onePutt';
+  if(strokes < par) return 'birdie';
+  if(strokes === par) return 'par';
+  return 'over';
+}
+const STROKE_MULT = { onePutt:3.0, birdie:2.0, par:1.2, over:0.5 };
+// streak = consecutive holes finished at par-or-better; multiplier capped ×3.
+function streakMultiplier(streak){ return Math.min(3.0, 1 + 0.2*streak); }
+// par-or-better continues the streak; over par resets it.
+function nextStreak(streak, strokes, par){ return strokes <= par ? streak+1 : 0; }
+// Points for one hole. `streak` is the post-update streak count this hole earns.
+function holeScore({distFt, diff, stimp, strokes, par, streak}){
+  const tier = resultTier(strokes, par);
+  const base = distFt * 12;
+  const difficulty = (0.7 + 0.3*diff) * (stimp/10);   // green-speed-weighted hole difficulty
+  const isBomb = (tier === 'onePutt' && distFt > 25);
+  const pts = base * difficulty * STROKE_MULT[tier] * streakMultiplier(streak) * (isBomb?1.5:1.0);
+  return { tier, bomb:isBomb, points: Math.round(pts) };
+}
+// === END SCORING ENGINE =====================================================
 
 // ---- session stats vs PGA Tour ----------------------------------------------
 // PGA expected putts by distance (Broadie) and make % per bucket.
@@ -546,6 +638,21 @@ function sndClick(power){
   g.gain.exponentialRampToValueAtTime(0.0001, t+0.05);
   o.connect(g).connect(a.destination);
   o.start(t); o.stop(t+0.06);
+}
+function sndCelebrate(big){
+  const a=ac(); if(!a) return;
+  const t0=a.currentTime;
+  const notes = big ? [523,659,784,1047] : [523,784];
+  notes.forEach((f,i)=>{
+    const o=a.createOscillator(), g=a.createGain();
+    o.type='triangle'; o.frequency.value=f;
+    const t=t0+i*0.07;
+    g.gain.setValueAtTime(0.0001,t);
+    g.gain.exponentialRampToValueAtTime(0.16,t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.18);
+    o.connect(g).connect(a.destination);
+    o.start(t); o.stop(t+0.2);
+  });
 }
 function sndDrop(){
   const a=ac(); if(!a) return;
@@ -1294,6 +1401,7 @@ function hideMsg(){document.getElementById('msg').style.display='none';}
 
 function onHoled(){
   sndDrop();
+  if(mode==='career') celebrate();
   if(puttStart){ recordPutt(puttStart.d, true); puttStart=null; }
   const sg=expPutts(firstPuttD)-strokes;
   sessionSG+=sg;
@@ -1301,11 +1409,11 @@ function onHoled(){
   const sc=strokes-level.par;
   totalVsPar+=sc;
   const term=({'-2':'Eagle!','-1':'Birdie!','0':'Par','1':'Bogey','2':'Double bogey'})[sc]||(sc<0?'Great!':'+'+sc);
-  showMsg(`⛳ Holed in ${strokes}`,
+  if(mode!=='career') showMsg(`⛳ Holed in ${strokes}`,
     `${term} · SG ${sg>=0?'+':''}${sg.toFixed(2)} vs PGA from ${firstPuttD.toFixed(0)} ft. `+
     `${LV<50?'Next level loading…':'Final hole complete!'}`);
   updateUI();
-  setTimeout(()=>{ if(LV<50) loadLevel(LV+1); else showMsg('🏆 Course complete!', `Total vs par: ${fmtVsPar(totalVsPar)}. Press Replay to play again.`); }, 1600);
+  nextLevelTimer=setTimeout(()=>{ if(LV<50) loadLevel(LV+1); else showMsg('🏆 Course complete!', `Total vs par: ${fmtVsPar(totalVsPar)}. Press Replay to play again.`); }, 1600);
 }
 function onStopped(){
   if(puttStart){
@@ -1322,6 +1430,35 @@ function onStopped(){
   document.getElementById('btnPutt').textContent='Drag the ball to putt';
   refreshBestRoute(); updateRead();
   snapCamera(true);                 // glide behind the ball's new lie
+}
+
+// Career celebration: scale the juice to the hole result and bank points.
+function celebrate(){
+  streakCount = nextStreak(streakCount, strokes, level.par);
+  const r = holeScore({ distFt:firstPuttD, diff:Math.min(1,(LV-1)/29),
+    stimp, strokes, par:level.par, streak:streakCount });
+  runScore += r.points;
+  setRunScore(runScore);
+
+  const cup=worldToScreen(level.hole.x, level.hole.y);
+  scorePopup(cup.x, cup.y, r.points);
+
+  if(r.tier==='onePutt'){
+    bigText(r.bomb?'💣 BOMB!':'🔥 ONE PUTT!', '#ffd84a');
+    burstConfetti(cup.x, cup.y, 90, ['#7ee081','#ffce5a','#ffffff','#e0413f','#5aa9ff']);
+    sndCelebrate(true);
+  } else if(r.tier==='birdie'){
+    bigText('BIRDIE!', '#7ee081');
+    burstConfetti(cup.x, cup.y, 36, ['#7ee081','#ffce5a','#ffffff']);
+    sndCelebrate(false);
+  } else if(r.tier==='par'){
+    bigText('PAR', '#e8f0e6');
+  } else {
+    bigText('+'+(strokes-level.par)+' over', '#9bb0a2');
+  }
+
+  const sEl=document.getElementById('runStreak');
+  sEl.textContent = streakCount>=2 ? ('🔥 streak ×'+streakCount) : '';
 }
 
 let camAnim=null;
@@ -1365,7 +1502,10 @@ function loadLevel(n, fixed){
 }
 
 // replay keeps the same pin & ball so you can retry the exact line
-function replayLevel(){ loadLevel(LV, { hole:level.hole, ball:level.ball }); }
+function replayLevel(){
+  if(mode==='career') return;   // Career = one shot per level
+  loadLevel(LV, { hole:level.hole, ball:level.ball });
+}
 document.getElementById('btnRetry').onclick=()=>replayLevel();
 document.getElementById('btnNext').onclick=()=>loadLevel(Math.min(50,LV+1));
 document.getElementById('btnCam').onclick=()=>snapCamera(true);
@@ -1433,6 +1573,7 @@ const rollAxis=new THREE.Vector3();
 let last=performance.now();
 function frame(now){
   const dt=Math.min(0.033,(now-last)/1000); last=now;
+  if(!level){ requestAnimationFrame(frame); return; }
   physics(dt);
 
   // live distance-to-hole readout while the ball rolls
@@ -1473,15 +1614,92 @@ function frame(now){
     controls.target.lerpVectors(camAnim.fromT, camAnim.toT, e);
     if(k>=1) camAnim=null;
   }
+  updateFx(dt);
+  tickScore();
   controls.update();
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 
+// --- FX: 2D overlay for particles + DOM popups -------------------------------
+const fxCv=document.getElementById('fx'), fxCtx=fxCv.getContext('2d');
+function fxResize(){ fxCv.width=window.innerWidth; fxCv.height=window.innerHeight; }
+fxResize(); window.addEventListener('resize', fxResize);
+let particles=[];
+function burstConfetti(sx, sy, n, hues){
+  for(let i=0;i<n;i++){
+    const a=Math.random()*Math.PI*2, sp=2+Math.random()*6;
+    particles.push({ x:sx, y:sy, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-3,
+      life:1, hue:hues[Math.floor(Math.random()*hues.length)], sz:3+Math.random()*4 });
+  }
+}
+function updateFx(dt){
+  fxCtx.clearRect(0,0,fxCv.width,fxCv.height);
+  for(const p of particles){
+    p.vy += 14*dt; p.x += p.vx; p.y += p.vy; p.life -= dt*0.9;
+    fxCtx.globalAlpha=Math.max(0,p.life);
+    fxCtx.fillStyle=p.hue;
+    fxCtx.fillRect(p.x, p.y, p.sz, p.sz);
+  }
+  fxCtx.globalAlpha=1;
+  particles=particles.filter(p=>p.life>0 && p.y<fxCv.height+20);
+}
+// world (feet) -> screen pixel, for placing popups at the cup
+function worldToScreen(fx, fz){
+  const v=new THREE.Vector3(fx, elev(fx,fz)*VS, fz).project(camera);
+  return { x:(v.x*0.5+0.5)*fxCv.width, y:(-v.y*0.5+0.5)*fxCv.height };
+}
+function bigText(txt, color){
+  const el=document.getElementById('bigText');
+  el.textContent=txt; el.style.color=color;
+  el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+}
+function scorePopup(px, py, pts){
+  const el=document.createElement('div');
+  el.className='scorePop'; el.textContent='+'+pts.toLocaleString();
+  el.style.left=px+'px'; el.style.top=py+'px';
+  document.body.appendChild(el);
+  void el.offsetWidth; el.classList.add('show');
+  setTimeout(()=>el.remove(), 1300);
+}
+// count-up the run-score HUD
+let scoreShown=0, scoreTarget=0;
+function setRunScore(v){ scoreTarget=v; }
+function tickScore(){
+  if(scoreShown!==scoreTarget){
+    const d=scoreTarget-scoreShown;
+    scoreShown += Math.sign(d)*Math.max(1, Math.ceil(Math.abs(d)*0.18));
+    if((d>0&&scoreShown>scoreTarget)||(d<0&&scoreShown<scoreTarget)) scoreShown=scoreTarget;
+    document.getElementById('runScore').textContent=Math.round(scoreShown).toLocaleString();
+  }
+}
+const startScreenEl=document.getElementById('startScreen');
+const toMenuEl=document.getElementById('toMenu');
+function showMenu(){
+  mode='menu';
+  clearTimeout(nextLevelTimer); nextLevelTimer=null;
+  startScreenEl.classList.remove('hidden');
+  toMenuEl.style.display='none';
+  hideMsg();
+}
+function startMode(m){
+  mode=m;
+  startScreenEl.classList.add('hidden');
+  toMenuEl.style.display='block';
+  totalVsPar=0; runScore=0; streakCount=0; scoreShown=0; scoreTarget=0;
+  document.getElementById('runScore').textContent='0';
+  document.getElementById('runStreak').textContent='';
+  document.getElementById('runHud').style.display = (m==='career') ? 'block' : 'none';
+  loadLevel(1);
+}
+document.getElementById('btnCareer').onclick=()=>startMode('career');
+document.getElementById('btnPractice').onclick=()=>startMode('practice');
+toMenuEl.onclick=()=>showMenu();
+
 // boot
 onResize();
-loadLevel(1);
 requestAnimationFrame(frame);
+showMenu();
 })();
 </script>
 </body>
