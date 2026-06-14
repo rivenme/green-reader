@@ -57,37 +57,13 @@
     color:var(--muted);margin:0 0 8px;font-weight:600;}
   .card .row b{font-size:15px;}
   .card.hidden{display:none;}
-  #startScreen{
-    position:fixed; inset:0; z-index:50;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:18px; background:radial-gradient(1000px 700px at 50% 30%,#1c2a1d,#0a0e0a);
-    text-align:center;
-  }
-  #startScreen.hidden{display:none;}
-  #startScreen h1{font-size:30px; margin:0;}
-  #startScreen .tag{color:var(--muted); font-size:13px; margin:-6px 0 10px;}
-  #startScreen .modeBtn{
-    width:240px; padding:16px; border-radius:12px; font-size:16px; cursor:pointer;
-    background:#243a27; color:var(--ink); border:1px solid rgba(255,255,255,.12);
-    transition:.15s;
-  }
-  #startScreen .modeBtn:hover{ background:#2d4a30; border-color:var(--accent); }
-  #startScreen .modeBtn.primary{ background:#2f6f36; border-color:#3f8f46; }
-  #startScreen .modeBtn small{ display:block; font-size:11px; color:var(--muted); margin-top:4px; font-weight:400; }
-  #toMenu{
-    position:fixed; top:8px; left:8px; z-index:11;
-    background:rgba(24,33,26,.88); backdrop-filter:blur(8px);
-    border:1px solid rgba(255,255,255,.12); color:var(--ink);
-    border-radius:8px; padding:6px 10px; font-size:12px; cursor:pointer; display:none;
-  }
+  .modeRow{ display:flex; gap:6px; margin-bottom:8px; }
+  .modeTab{ flex:1; margin-top:0; padding:8px 4px; font-size:12px; }
+  .modeTab.active{ background:#2f6f36; border-color:var(--accent); }
+  .careerOnly{ display:none; }
+  body.careerMode .careerOnly{ display:flex; }
+  #runScore{ font-size:18px; }
   #fx{ position:fixed; inset:0; z-index:9; pointer-events:none; }
-  #runHud{
-    position:fixed; top:8px; left:50%; transform:translateX(-50%); z-index:11;
-    display:none; text-align:center; text-shadow:0 2px 8px rgba(0,0,0,.8);
-    font-variant-numeric:tabular-nums;
-  }
-  #runHud .score{ font-size:26px; font-weight:700; color:var(--accent); }
-  #runHud .streak{ font-size:13px; color:#ffce5a; min-height:16px; }
   #bigText{
     position:fixed; top:38%; left:50%; transform:translate(-50%,-50%) scale(1);
     z-index:11; pointer-events:none; font-size:46px; font-weight:800;
@@ -198,17 +174,7 @@
 </script>
 </head>
 <body>
-  <div id="startScreen">
-    <h1>⛳ <span style="color:var(--accent)">Green Reader 3D</span></h1>
-    <div class="tag">Read the slope. Judge the speed. Sink the putt.</div>
-    <button class="modeBtn primary" id="btnCareer">⛳ Career
-      <small>Climb 50 levels · score, streaks, celebrations</small></button>
-    <button class="modeBtn" id="btnPractice">🎯 Practice
-      <small>Pure learning · caddie card, best line, free retries</small></button>
-  </div>
-  <button id="toMenu">← Menu</button>
   <canvas id="fx"></canvas>
-  <div id="runHud"><div class="score" id="runScore">0</div><div class="streak" id="runStreak"></div></div>
   <div id="bigText"></div>
   <div class="stage" id="stage">
     <div class="msg" id="msg" style="display:none"><div id="msgText"></div></div>
@@ -248,6 +214,14 @@
   </div>
 
   <div class="panel" id="panel">
+      <h2>Mode</h2>
+      <div class="modeRow">
+        <button class="modeTab" id="btnCareer">⛳ Career</button>
+        <button class="modeTab" id="btnPractice">🎯 Practice</button>
+      </div>
+      <div class="row careerOnly"><span>Run score</span><b id="runScore">0</b></div>
+      <div class="row careerOnly"><span>Streak</span><b id="runStreak">—</b></div>
+      <hr/>
       <h2>Hole</h2>
       <div class="row"><span>Level</span><b id="uiLevel">1</b></div>
       <div class="row"><span>Par</span><b id="uiPar">2</b></div>
@@ -327,7 +301,7 @@ const BALL_R = 0.22;             // render radius (real ball would be invisible)
 // ---------------------------------------------------------------------------
 let level=null, LV=1;
 let userStimp=10, stimp=10;      // Stimp 10 ≈ a well-kept members' club green
-let mode='menu';                 // 'menu' | 'career' | 'practice'
+let mode='career';               // 'career' | 'practice' (set by the panel mode tabs)
 let nextLevelTimer=null;         // post-hole advance timer, cancelled on menu
 
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
@@ -1458,7 +1432,7 @@ function celebrate(){
   }
 
   const sEl=document.getElementById('runStreak');
-  sEl.textContent = streakCount>=2 ? ('🔥 streak ×'+streakCount) : '';
+  sEl.textContent = streakCount>=2 ? ('🔥 ×'+streakCount) : '—';
 }
 
 let camAnim=null;
@@ -1673,35 +1647,27 @@ function tickScore(){
     document.getElementById('runScore').textContent=Math.round(scoreShown).toLocaleString();
   }
 }
-const startScreenEl=document.getElementById('startScreen');
-const toMenuEl=document.getElementById('toMenu');
-function showMenu(){
-  mode='menu';
-  clearTimeout(nextLevelTimer); nextLevelTimer=null;
-  startScreenEl.classList.remove('hidden');
-  document.getElementById('hdr').style.display='';
-  toMenuEl.style.display='none';
-  hideMsg();
-}
+// Mode is selected from tabs in the side panel (no separate menu screen).
+const modeTabs={ career:document.getElementById('btnCareer'), practice:document.getElementById('btnPractice') };
 function startMode(m){
   mode=m;
-  startScreenEl.classList.add('hidden');
-  document.getElementById('hdr').style.display='none';   // declutter top during play
-  toMenuEl.style.display='block';
+  clearTimeout(nextLevelTimer); nextLevelTimer=null;
+  document.getElementById('hdr').style.display='none';   // keep the top of the screen clean
+  document.body.classList.toggle('careerMode', m==='career');
+  modeTabs.career.classList.toggle('active', m==='career');
+  modeTabs.practice.classList.toggle('active', m==='practice');
   totalVsPar=0; runScore=0; streakCount=0; scoreShown=0; scoreTarget=0;
   document.getElementById('runScore').textContent='0';
-  document.getElementById('runStreak').textContent='';
-  document.getElementById('runHud').style.display = (m==='career') ? 'block' : 'none';
+  document.getElementById('runStreak').textContent='—';
   loadLevel(1);
 }
-document.getElementById('btnCareer').onclick=()=>startMode('career');
-document.getElementById('btnPractice').onclick=()=>startMode('practice');
-toMenuEl.onclick=()=>showMenu();
+modeTabs.career.onclick=()=>startMode('career');
+modeTabs.practice.onclick=()=>startMode('practice');
 
 // boot
 onResize();
 requestAnimationFrame(frame);
-showMenu();
+startMode('career');
 })();
 </script>
 </body>
