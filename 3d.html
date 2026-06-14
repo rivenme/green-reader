@@ -62,7 +62,16 @@
   .modeTab.active{ background:#2f6f36; border-color:var(--accent); }
   .careerOnly{ display:none; }
   body.careerMode .careerOnly{ display:flex; }
-  #runScore{ font-size:18px; }
+  #topHud{
+    position:fixed; top:6px; left:50%; transform:translateX(-50%); z-index:11;
+    text-align:center; pointer-events:none; text-shadow:0 2px 8px rgba(0,0,0,.85);
+    font-variant-numeric:tabular-nums;
+  }
+  #topHud .vspar{ font-size:30px; font-weight:800; color:var(--accent); line-height:1.05; }
+  #topHud .vspar small{ font-size:12px; color:var(--muted); font-weight:600; }
+  #topHud .runline{ font-size:13px; color:var(--muted); margin-top:1px; }
+  #topHud .runline b{ color:#ffce5a; font-size:14px; }
+  #topHud .runline .stk{ color:#ffce5a; }
   #fx{ position:fixed; inset:0; z-index:9; pointer-events:none; }
   #bigText{
     position:fixed; top:38%; left:50%; transform:translate(-50%,-50%) scale(1);
@@ -97,7 +106,7 @@
   }
   #scoreChip b{color:var(--accent);font-variant-numeric:tabular-nums;}
   #quickBtns{
-    display:none;
+    display:flex;
     position:fixed;right:10px;bottom:calc(14px + env(safe-area-inset-bottom));
     z-index:10;flex-direction:column;gap:10px;
   }
@@ -176,6 +185,10 @@
 <body>
   <canvas id="fx"></canvas>
   <div id="bigText"></div>
+  <div id="topHud">
+    <div class="vspar"><span id="hudVsPar">E</span> <small>vs par</small></div>
+    <div class="runline careerOnly"><b id="runScore">0</b> pts <span class="stk" id="runStreak">—</span></div>
+  </div>
   <div class="stage" id="stage">
     <div class="msg" id="msg" style="display:none"><div id="msgText"></div></div>
   </div>
@@ -219,8 +232,6 @@
         <button class="modeTab" id="btnCareer">⛳ Career</button>
         <button class="modeTab" id="btnPractice">🎯 Practice</button>
       </div>
-      <div class="row careerOnly"><span>Run score</span><b id="runScore">0</b></div>
-      <div class="row careerOnly"><span>Streak</span><b id="runStreak">—</b></div>
       <hr/>
       <h2>Hole</h2>
       <div class="row"><span>Level</span><b id="uiLevel">1</b></div>
@@ -1361,6 +1372,7 @@ function updateUI(){
   document.getElementById('uiPar').textContent=level.par;
   document.getElementById('uiStrokes').textContent=strokes;
   document.getElementById('uiTotal').textContent=fmtVsPar(totalVsPar);
+  document.getElementById('hudVsPar').textContent=fmtVsPar(totalVsPar);
   // compact score chip (visible on phones)
   document.getElementById('scLevel').textContent=LV+'/50';
   document.getElementById('scPar').textContent=level.par;
@@ -1529,13 +1541,12 @@ const isPhone=()=>window.innerWidth<760;
 function togglePanels(){
   const hide=!panelEl.classList.contains('hidden');
   panelEl.classList.toggle('hidden', hide);
-  // on phones the compact read card stays up; ☰ only drives the bottom sheet.
-  // Quick buttons make way for the sheet (their controls live there too).
-  if(!isPhone()) readCardEl.classList.toggle('hidden', hide);
+  // ☰ only opens/closes the control panel; the green-read card stays up.
+  // On phones the floating quick buttons make way for the open bottom sheet.
   document.getElementById('quickBtns').style.display = !hide && isPhone() ? 'none' : '';
 }
 document.getElementById('panelToggle').onclick=togglePanels;
-if(isPhone()) panelEl.classList.add('hidden');   // open with a clean green on mobile
+panelEl.classList.add('hidden');   // control panel starts collapsed — tap ☰ to open
 
 // phone quick buttons: retry + best-line toggle without opening the sheet
 document.getElementById('qbRetry').onclick=()=>replayLevel();
