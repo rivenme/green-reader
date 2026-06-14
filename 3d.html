@@ -1679,12 +1679,14 @@ function showMenu(){
   mode='menu';
   clearTimeout(nextLevelTimer); nextLevelTimer=null;
   startScreenEl.classList.remove('hidden');
+  document.getElementById('hdr').style.display='';
   toMenuEl.style.display='none';
   hideMsg();
 }
 function startMode(m){
   mode=m;
   startScreenEl.classList.add('hidden');
+  document.getElementById('hdr').style.display='none';   // declutter top during play
   toMenuEl.style.display='block';
   totalVsPar=0; runScore=0; streakCount=0; scoreShown=0; scoreTarget=0;
   document.getElementById('runScore').textContent='0';
