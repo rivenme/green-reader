@@ -1754,7 +1754,7 @@ function loadLevel(n, fixed, seed){
 
 // replay keeps the same pin & ball so you can retry the exact line
 function replayLevel(){
-  if(mode==='career') return;   // Career = one shot per level
+  if(holed) return;             // ball already dropped; the level is advancing
   if(mode==='daily'){           // retry the same daily hole, fresh score
     runScore=0; streakCount=0; scoreShown=0; scoreTarget=0; setRunScore(0);
     document.getElementById('runScore').textContent='0';
@@ -1762,6 +1762,7 @@ function replayLevel(){
     loadLevel(1, null, todaySeed());
     return;
   }
+  // Career & Practice: restart this hole from the same pin & ball (retry the line).
   loadLevel(LV, { hole:level.hole, ball:level.ball });
 }
 document.getElementById('btnRetry').onclick=()=>replayLevel();
@@ -1939,7 +1940,7 @@ function startMode(m){
   const scored = (m==='career'||m==='daily');            // career & daily show score + career UI
   document.body.classList.toggle('careerMode', scored);
   ['career','practice','daily'].forEach(k=>modeTabs[k].classList.toggle('active', m===k));
-  document.getElementById('qbRetry').style.display = (m==='career') ? 'none' : '';
+  document.getElementById('qbRetry').style.display = '';   // replay works in every mode
   totalVsPar=0; runScore=0; streakCount=0; scoreShown=0; scoreTarget=0;
   runStats=freshRun();
   document.getElementById('runScore').textContent='0';
