@@ -772,10 +772,12 @@ function renderBadges(){
 function currentBall(){ return BALL_SKINS.find(b=>b.id===career.ball)||BALL_SKINS[0]; }
 function currentTheme(){ return GREEN_THEMES.find(t=>t.id===career.theme)||GREEN_THEMES[0]; }
 function applyCosmetics(){
-  const b=currentBall();
+  const b=currentBall(), t=currentTheme();
   ballMesh.material.color.set(b.color);
   trailLine.material.color.set(b.trail);
-  if(level) buildTerrain();   // green themes re-tint the terrain; sky stays
+  scene.background.set(t.bg);
+  if(scene.fog) scene.fog.color.set(t.bg);
+  if(level) buildTerrain();
 }
 function renderLocker(){
   const mk=(items, kind, sel)=>items.map(it=>{
@@ -1036,31 +1038,8 @@ renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 stage.insertBefore(renderer.domElement, stage.firstChild);
 
 const scene=new THREE.Scene();
-// Procedural daytime sky (gradient + soft clouds) wrapped around the scene as
-// an equirectangular background, so it pans naturally as you orbit.
-function makeSkyTexture(){
-  const c=document.createElement('canvas'); c.width=1024; c.height=512;
-  const g=c.getContext('2d');
-  const grad=g.createLinearGradient(0,0,0,512);
-  grad.addColorStop(0.00,'#3f86cf');   // zenith
-  grad.addColorStop(0.45,'#86bfe8');
-  grad.addColorStop(0.50,'#cfe6f5');   // horizon band
-  grad.addColorStop(1.00,'#b9d3e6');
-  g.fillStyle=grad; g.fillRect(0,0,1024,512);
-  const puff=(x,y,r)=>{ for(let i=0;i<7;i++){
-    const ox=(Math.random()-0.5)*r*2.2, oy=(Math.random()-0.5)*r*0.7, rr=r*(0.45+Math.random()*0.6);
-    const rad=g.createRadialGradient(x+ox,y+oy,0,x+ox,y+oy,rr);
-    rad.addColorStop(0,'rgba(255,255,255,0.92)'); rad.addColorStop(1,'rgba(255,255,255,0)');
-    g.fillStyle=rad; g.beginPath(); g.arc(x+ox,y+oy,rr,0,7); g.fill();
-  } };
-  for(let i=0;i<18;i++) puff(Math.random()*1024, 120+Math.random()*120, 26+Math.random()*46);
-  const tex=new THREE.CanvasTexture(c);
-  tex.mapping=THREE.EquirectangularReflectionMapping;
-  tex.colorSpace=THREE.SRGBColorSpace;
-  return tex;
-}
-scene.background=makeSkyTexture();
-scene.fog=new THREE.Fog(0xc2d8ea, 120, 320);   // distant green fades into the sky
+scene.background=new THREE.Color(0x0c120d);
+scene.fog=new THREE.Fog(0x0c120d, 90, 260);
 
 const camera=new THREE.PerspectiveCamera(50, 16/9, 0.1, 500);
 const controls=new OrbitControls(camera, renderer.domElement);
