@@ -236,8 +236,8 @@
     <button id="lockerClose" style="margin-top:14px">Close</button>
   </div></div>
   <div id="topHud">
-    <div class="vspar"><span id="hudVsPar">E</span> <small>vs par</small></div>
-    <div class="runline careerOnly"><b id="runScore">0</b> pts <span class="stk" id="runStreak">—</span></div>
+    <div class="vspar"><span id="hudVsPar">E</span></div>
+    <div class="runline careerOnly"><b id="runScore">0</b> <span class="stk" id="runStreak"></span></div>
   </div>
   <div class="stage" id="stage">
     <div class="msg" id="msg" style="display:none"><div id="msgText"></div></div>
@@ -615,6 +615,14 @@ function resultTier(strokes, par){
   if(strokes < par) return 'birdie';
   if(strokes === par) return 'par';
   return 'over';
+}
+// Proper golf score name for strokes vs par (a 1-stroke hole is a Hole in One).
+function golfTerm(strokes, par){
+  if(strokes===1) return 'Hole in One!';
+  const d=strokes-par;
+  return ({'-4':'Condor!','-3':'Albatross!','-2':'Eagle!','-1':'Birdie!',
+    '0':'Par','1':'Bogey','2':'Double Bogey','3':'Triple Bogey'})[d]
+    || (d<0 ? 'Great!' : '+'+d+' Over');
 }
 const STROKE_MULT = { onePutt:3.0, birdie:2.0, par:1.2, over:0.5 };
 // streak = consecutive holes finished at par-or-better; multiplier capped ×3.
@@ -1680,22 +1688,23 @@ function celebrate(){
   const cup=worldToScreen(level.hole.x, level.hole.y);
   scorePopup(cup.x, cup.y, r.points);
 
+  const label=golfTerm(strokes, level.par);
   if(r.tier==='onePutt'){
-    bigText(r.bomb?'💣 BOMB!':'🔥 ONE PUTT!', '#ffd84a');
+    bigText(r.bomb?('💣 '+label):('⛳ '+label), '#ffd84a');
     burstConfetti(cup.x, cup.y, 90, ['#7ee081','#ffce5a','#ffffff','#e0413f','#5aa9ff']);
     sndCelebrate(true);
   } else if(r.tier==='birdie'){
-    bigText('BIRDIE!', '#7ee081');
+    bigText(label, '#7ee081');
     burstConfetti(cup.x, cup.y, 36, ['#7ee081','#ffce5a','#ffffff']);
     sndCelebrate(false);
   } else if(r.tier==='par'){
-    bigText('PAR', '#e8f0e6');
+    bigText(label, '#e8f0e6');
   } else {
-    bigText('+'+(strokes-level.par)+' over', '#9bb0a2');
+    bigText(label, '#9bb0a2');
   }
 
   const sEl=document.getElementById('runStreak');
-  sEl.textContent = streakCount>=2 ? ('🔥 ×'+streakCount) : '—';
+  sEl.textContent = streakCount>=2 ? ('🔥 ×'+streakCount) : '';
 
   if(mode==='daily') dailyProgress(r); else careerProgress(r);
 }
@@ -1746,7 +1755,7 @@ function replayLevel(){
   if(mode==='daily'){           // retry the same daily hole, fresh score
     runScore=0; streakCount=0; scoreShown=0; scoreTarget=0; setRunScore(0);
     document.getElementById('runScore').textContent='0';
-    document.getElementById('runStreak').textContent='—';
+    document.getElementById('runStreak').textContent='';
     loadLevel(1, null, todaySeed());
     return;
   }
@@ -1931,7 +1940,7 @@ function startMode(m){
   totalVsPar=0; runScore=0; streakCount=0; scoreShown=0; scoreTarget=0;
   runStats=freshRun();
   document.getElementById('runScore').textContent='0';
-  document.getElementById('runStreak').textContent='—';
+  document.getElementById('runStreak').textContent='';
   updateCareerUI();
   if(m==='daily') loadLevel(1, null, todaySeed());
   else loadLevel(1);
