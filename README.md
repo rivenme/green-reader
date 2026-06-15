@@ -23,7 +23,7 @@ xdg-open golf-putting-game/index.html  # Linux
 
 The 3D version has three modes, picked from tabs in the side panel (tap **☰**):
 
-- **⛳ Career** — climb all 50 levels for a high score. Each holed putt scores
+- **⛳ Competition** — climb all 50 levels for a high score. Each holed putt scores
   `distance × difficulty × stroke-tier × streak` and fires a celebration
   (🔥 ONE PUTT! / 💣 BOMB! / BIRDIE! / PAR) with a pop-up score, confetti and a
   chime. A par-or-better **streak** multiplies your score. One shot per level —
