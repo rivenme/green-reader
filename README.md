@@ -30,8 +30,6 @@ The 3D version has three modes, picked from tabs in the side panel (tap **☰**)
   no retries. Clear level 50 for an end-of-run recap. Lifetime points earn
   **XP & ranks** (Weekend Hacker → … → Legend), and there are **12 achievement
   badges** and a **Locker** of unlockable ball colours, trails and green themes.
-- **🗓 Daily** — one date-seeded green that's the same for everyone that day;
-  unlimited tries to beat your daily best.
 - **🎯 Practice** — pure learning: caddie card, best-line guide, free retries,
   no score pressure.
 
