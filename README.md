@@ -1,59 +1,59 @@
 # ⛳ Green Reader — Realistic Putting Simulator
 
 A single-file browser game that simulates how a golf ball rolls across an
-undulating green, so you can **learn to read break, slope and speed**. No build
-step, no dependencies — just open `index.html` in any modern browser.
+undulating green, so you can **learn to read break, slope and speed**. The green
+is rendered as a real 3D surface with Three.js — walk and orbit around the putt
+to read the slope like a pro.
 
-**Play online:** [2D version](https://rivenme.github.io/green-reader/) ·
-[3D version](https://rivenme.github.io/green-reader/3d.html) — both work on
-**phones**: the 3D game uses touch (drag the ball to putt, one finger to orbit,
-pinch to zoom), with a compact green-read card and the controls in a ☰
-bottom sheet.
+**Play online:** [rivenme.github.io/green-reader](https://rivenme.github.io/green-reader/)
+— works on **phones** too: drag the ball back to putt, one finger to orbit,
+pinch to zoom, with a compact green-read card and the controls in a ☰ bottom
+sheet.
 
 ## Play
 
 ```
-open golf-putting-game/index.html      # macOS — 2D top-down (works offline)
-open golf-putting-game/3d.html         # 3D green simulator (needs internet for Three.js CDN)
-xdg-open golf-putting-game/index.html  # Linux
+open index.html        # macOS
+xdg-open index.html    # Linux
 # or just double-click the file
 ```
 
-### 🎮 Career mode (3D)
+No build step. The only dependency is **Three.js**, loaded from a CDN at
+runtime — so the game needs an internet connection to load.
 
-The 3D version has three modes, picked from tabs in the side panel (tap **☰**):
+### 🎮 Modes
+
+Pick a mode from the tabs in the side panel (tap **☰** on phones):
 
 - **⛳ Competition** — climb all 50 levels for a high score. Each holed putt scores
   `distance × difficulty × stroke-tier × streak` and fires a celebration
   (🔥 ONE PUTT! / 💣 BOMB! / BIRDIE! / PAR) with a pop-up score, confetti and a
-  chime. A par-or-better **streak** multiplies your score. One shot per level —
-  no retries. Clear level 50 for an end-of-run recap. Lifetime points earn
-  **XP & ranks** (Weekend Hacker → … → Legend), and there are **12 achievement
-  badges** and a **Locker** of unlockable ball colours, trails and green themes.
+  chime. A par-or-better **streak** multiplies your score. Clear level 50 for an
+  end-of-run recap. Lifetime points earn **XP & ranks** (Weekend Hacker → … →
+  Legend), and there are **12 achievement badges** and a **Locker** of unlockable
+  ball colours, trails and green themes.
 - **🎯 Practice** — pure learning: caddie card, best-line guide, free retries,
   no score pressure.
 
-Progress (XP, badges, best run, daily best, equipped cosmetics) is saved in your
-browser's `localStorage`. The big top number is your **vs-par** score; the small
-line is your **run points + streak**. **➰** toggles the predicted break path and
-**↺** replays the hole (Practice/Daily).
+Progress (XP, badges, best run, equipped cosmetics) is saved in your browser's
+`localStorage`. The big top number is your **vs-par** score; the small line is
+your **run points + streak**. **➰** toggles the predicted break path and **↺**
+replays the hole.
 
-### 🏔 3D rendering (`3d.html`)
+### 🏔 The 3D green
 
-The same physics rendered as a **real 3D green** (Three.js): walk/orbit around
-the putt to read the slope like a pro — drag anywhere to orbit the camera,
-scroll to zoom, press `C` to snap behind the ball. The terrain mesh is the
-actual elevation field with contour lines every 0.25 ft, a GSPro-style putting
-grid draped on the surface, height-ramp colouring and a sun casting ball
+Walk/orbit around the putt to read the slope like a pro — drag anywhere to orbit
+the camera, scroll to zoom, press `C` to snap behind the ball. The terrain mesh
+is the actual elevation field with contour lines every 0.25 ft, a GSPro-style
+putting grid draped on the surface, height-ramp colouring and a sun casting ball
 shadows for depth. Break is shown the way modern golf sims (GSPro, PGA 2K) do
 it: **flowing dots** that drift downhill — faster and brighter where the slope
-is steeper. Aiming, predicted path and the roll trail work identically to the
-2D version.
+is steeper.
 
-The 3D course has **50 seeded levels** on a clean edge-to-edge green.
-Difficulty ramps to its max around level 30, then keeps varying by seed.
+The course has **50 seeded levels** on a clean edge-to-edge green. Difficulty
+ramps to its max around level 30, then keeps varying by seed.
 
-3D-only realism: green contours stay in the real-world 1–4% slope range (no
+Realism touches: green contours stay in the real-world 1–4% slope range (no
 deep bowls — real greens are built to drain, so hollows are shallow), plus
 structural features real architects use — **tiers** and **ridges/spines** —
 with pins always cut on reasonably flat ground. The roll model is the real
@@ -96,6 +96,10 @@ and why this teaches better than a game that just draws the line in for you.
 | `R` | Replay the hole |
 | `P` | Toggle predicted break path (the "answer key") |
 | `S` | Toggle slope arrows & shading |
+| `B` | Toggle best line to hole |
+| `C` | Snap camera behind the ball |
+| `V` | Crouched read camera (ball height) |
+| `N` | Skip to next level |
 
 ## How the learning aids map to reality
 
@@ -133,17 +137,20 @@ a = a_gravity + a_friction
 - **Cup capture / lip-out**: arrive slowly and it drops; arrive too hot and it
   rims out and deflects, just like real life.
 
-## Levels & difficulty (10 holes)
+## Levels & difficulty
 
-Difficulty scales smoothly across the 10 levels — each is **seeded**, so the
-same level number always plays the same:
+The course has **50 seeded levels** — each level number always plays the same.
+Difficulty ramps to its max around level 30, then keeps varying by seed:
 
 | As you level up | Effect |
 |-----------------|--------|
 | Base tilt increases | Stronger overall break |
 | More & sharper bumps/hollows | Multi-break, double-breaking putts |
 | Longer distance | Harder speed control |
-| Higher Stimp (8 → 13) | Faster greens that break more and run out |
+| Tiers & ridges/spines appear | Structural features that redirect the roll |
+
+You can also set green speed yourself with the **Stimp slider** (default 10 ≈
+members' club; 13+ = tournament glass) — faster greens break more and run out.
 
 ## Tips to actually get better
 1. **Speed first.** Most missed putts are wrong *pace*, not wrong *line*. A putt
@@ -154,4 +161,4 @@ same level number always plays the same:
 4. **Trust the slope arrows** on faster (higher-Stimp) greens; small slopes move
    the ball a lot when the green is quick.
 
-Built as a self-contained `index.html` (HTML5 Canvas + vanilla JS).
+Built as a self-contained `index.html` (Three.js / WebGL + vanilla JS).
