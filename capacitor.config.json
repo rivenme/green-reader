@@ -1,0 +1,12 @@
+{
+  "appId": "com.rivenme.greenreader",
+  "appName": "Green Reader",
+  "webDir": "dist",
+  "backgroundColor": "#0c100c",
+  "ios": {
+    "contentInset": "never",
+    "scrollEnabled": false,
+    "backgroundColor": "#0c100c",
+    "preferredContentMode": "mobile"
+  }
+}

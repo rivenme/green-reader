@@ -20,6 +20,15 @@ npm run test:e2e      # desktop Chromium/Firefox/WebKit + mobile Chrome/Safari e
 npm run preview      # serve the production build after npm run build
 ```
 
+## iPhone app
+
+The native iOS project is in `ios/App/App.xcodeproj`. Run `npm run ios:open`
+to rebuild the bundled game and open Xcode, or `npm run ios:run` to choose a
+simulator or connected iPhone. See [iPhone setup and installation](docs/IPHONE.md).
+
+The installed app includes the 3D engine and game assets for offline play.
+Its progress is stored separately from the browser version.
+
 ## Play
 
 - **First putt:** a short interactive lesson on a flat eight-foot green. Drag and release, or use the aim/power controls and Putt.
