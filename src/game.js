@@ -5,7 +5,7 @@ import { makeLevel, mulberry32, dist } from './course.js';
 import { elevOf, gradOf } from './terrain.js';
 import { launch, rollStep, simulate, effectiveGradient } from './physics.js';
 import { resultTier, golfTerm, streakMultiplier, nextStreak, holeScore, RANKS, rankFor, nextRank, ACHIEVEMENTS, newlyEarned, BALL_SKINS, GREEN_THEMES, isUnlocked } from './scoring.js';
-import { createAudio } from './audio.js';
+import { createAudio } from './audio.js?v=20260909';
 import { createStore, freshRun, validateRun } from './storage.js';
 import { announce, createDialogs } from './ui.js';
 import { bindSlingshot } from './input.js';
