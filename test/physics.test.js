@@ -8,15 +8,15 @@ test('flat roll settles; faster greens roll farther',()=>{
   const slow=simulate(flat,start,{stimp:7}),fast=simulate(flat,start,{stimp:14});
   assert.equal(slow.ball.moving,false);assert.equal(fast.ball.moving,false);assert.ok(fast.ball.x>slow.ball.x);assert.equal(fast.ball.y,10);
 });
-test('slow central putt drops; hot central putt crosses the cup',()=>{
+test('central putts drop at any speed',()=>{
   const l={...flat,hole:{x:20,y:10}};
   const slow=launch(19.99,10,2,0);assert.equal(rollStep(slow,l),'holed');
-  const hot=launch(19.99,10,12,0);assert.equal(rollStep(hot,l),'moving');assert.ok(hot.vx>10);
+  const hot=launch(19.99,10,12,0);assert.equal(rollStep(hot,l),'holed');assert.equal(hot.moving,false);
   assert.ok(capSpeedAt(0,.35)>capSpeedAt(.34,.35));
 });
-test('lip graze deflects outside cup instead of being recaptured next tick',()=>{
+test('cup intersection is accepted without flag or lip bounce',()=>{
   const l={...flat,hole:{x:20,y:10}};const b=launch(19.98,10.31,4,0);
-  assert.equal(rollStep(b,l),'moving');assert.ok(b.lipCooldown>0);assert.ok(Math.hypot(b.x-20,b.y-10)>.35);
+  assert.equal(rollStep(b,l),'holed');assert.equal(b.moving,false);assert.equal(b.x,20);assert.equal(b.y,10);
   assert.notEqual(rollStep(b,l),'holed');
 });
 test('boundary reflects only the crossed axis',()=>{

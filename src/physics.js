@@ -42,20 +42,9 @@ export function rollStep(b, level, options={}, h=STEP){
   b.lipCooldown=Math.max(0,(b.lipCooldown||0)-h);
   const capture=()=>{ b.arrivalSpeed=speed;b.x=hx;b.y=hy;b.vx=b.vy=0;b.moving=false;return 'holed'; };
   if(!options.ignoreCup && closest<radius && b.lipCooldown===0){
-    // Real cups accept a little speed and off-centre entry. Keep the flag and
-    // rim readable while making a well aimed putt reliably drop.
-    const cap=capSpeedAt(closest,radius)*1.25;
-    if(speed<cap) return capture();
-    // Only an off-centre graze catches the lip. Move it outside the cup so
-    // the next step cannot count the same impact as a fresh capture.
-    if(closest>radius*0.3 && speed<cap*2.2){
-      const rx=cx/closest, ry=cy/closest, tx=-ry, ty=rx;
-      const tangent=b.vx*tx+b.vy*ty;
-      b.vx=tx*tangent*0.82+rx*speed*0.14;
-      b.vy=ty*tangent*0.82+ry*speed*0.14;
-      nx=hx+rx*(radius+0.02);ny=hy+ry*(radius+0.02);
-      b.lipCooldown=0.15;
-    }
+    // The flagstick and rim are visual only. Any ball path that intersects
+    // the cup is accepted; there is no flag or lip bounce in the game rules.
+    return capture();
   }
   b.x=nx;b.y=ny;
   const m=0.6;
