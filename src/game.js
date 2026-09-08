@@ -49,7 +49,7 @@ let career=store.state.career, settings=store.state.settings;
 let runStats=freshRun(), completed=false, ready=false, activeRun=false, modalOpen=false, contextLost=false;
 let tutorial=false, tutorialStep=0, savedRun=store.state.run;
 const audio=createAudio(()=>settings.optSnd && !document.hidden);
-const {sndClick,sndCelebrate,sndDrop,ensureRollSound}=audio;
+const {sndClick,sndCelebrate,sndDrop}=audio;
 const reducedMotion=()=>settings.optMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
 const paused=()=>document.hidden || modalOpen || contextLost;
 const dialogs=createDialogs(value=>{modalOpen=value;if(ready){cancelAim();if(value)audio.pause();}});
@@ -624,7 +624,7 @@ function takeShot(aim){
   }
   Object.assign(ball,launch(ball.x,ball.y,vx,vy));
   accumulator=0;puttStart={x:ball.x,y:ball.y,d:dist(ball,level.hole)};
-  ensureRollSound();sndClick(aim.power);resetTrail();pushTrail(ball.x,ball.y);
+  sndClick(aim.power);resetTrail();pushTrail(ball.x,ball.y);
   stopSolver();drawBestRoute(null);strokes++;cancelAim();updateUI();persist();
   announce('Putt '+strokes+'. Ball rolling.');
   if(tutorial)setLesson(2);
@@ -929,8 +929,6 @@ function frame(now){
   if(aiming || keyboardAim) updateAimTube();
   updatePredicted();
   if(!reducedMotion())updateFlow(dt);
-
-  audio.update(sp, ball.moving && !paused());
 
   // camera glide to the ball's new lie
   if(camAnim){

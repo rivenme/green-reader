@@ -1,5 +1,5 @@
 export function createAudio(enabled){
-let AC=null, rollSrc=null, rollGain=null, rollFlt=null;
+let AC=null;
 function ac(){
   if(!enabled()) return null;
   if(!AC){
@@ -49,26 +49,6 @@ function sndDrop(){
     o.start(t0+dt); o.stop(t0+dt+0.1);
   });
 }
-function ensureRollSound(){
-  const a=ac(); if(!a||rollSrc) return;
-  const len=a.sampleRate;
-  const buf=a.createBuffer(1,len,a.sampleRate);
-  const d=buf.getChannelData(0);
-  for(let i=0;i<len;i++) d[i]=Math.random()*2-1;
-  rollSrc=a.createBufferSource(); rollSrc.buffer=buf; rollSrc.loop=true;
-  rollFlt=a.createBiquadFilter(); rollFlt.type='lowpass'; rollFlt.frequency.value=300;
-  rollGain=a.createGain(); rollGain.gain.value=0;
-  rollSrc.connect(rollFlt); rollFlt.connect(rollGain); rollGain.connect(a.destination);
-  rollSrc.start();
-}
-
-
-function update(speed, moving){
-  if(!rollGain) return;
-  const target=(enabled() && moving) ? Math.min(0.05,speed*0.008) : 0;
-  rollGain.gain.value+=(target-rollGain.gain.value)*0.2;
-  rollFlt.frequency.value=200+speed*60;
-}
-function pause(){ if(rollGain) rollGain.gain.value=0; }
-return { sndClick, sndCelebrate, sndDrop, ensureRollSound, update, pause };
+function pause(){}
+return { sndClick, sndCelebrate, sndDrop, pause };
 }
