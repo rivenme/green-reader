@@ -3,14 +3,15 @@ const diagnostics=installDiagnostics();
 const status=document.getElementById('bootStatus');
 const fallbackButton=document.getElementById('fallbackPlay');
 fallbackButton.onclick=async()=>{const {startFallback}=await import('./fallback.js');startFallback();};
-function fail(){
+function fail(message='The green could not load. Check that graphics acceleration is enabled, then try again.'){
   document.getElementById('boot').classList.remove('hidden');
-  status.textContent='The green could not load. Check that graphics acceleration is enabled, then try again.';
+  status.textContent=message;
   document.getElementById('bootRetry').hidden=false;
 }
 document.getElementById('bootRetry').onclick=()=>location.reload();
 try{
   const {startGame}=await import('./game.js');
   startGame();
+  fallbackButton.hidden=true;
   document.getElementById('boot').classList.add('hidden');
-}catch(error){diagnostics.record('startup',error);console.error('Green Reader startup failed',error);status.textContent='3D graphics are unavailable in this browser. You can still practice with the 2D mode.';fallbackButton.hidden=false;fail();}
+}catch(error){diagnostics.record('startup',error);console.error('Green Reader startup failed',error);fallbackButton.hidden=false;fail('3D graphics are unavailable in this browser. You can still practice with the 2D mode.');}

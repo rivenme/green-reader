@@ -48,7 +48,8 @@ test('solver responds without blocking controls and settings persist',async({pag
 
 test('startup graphics failure gives recovery controls',async({page})=>{
   await page.addInitScript(()=>{const original=HTMLCanvasElement.prototype.getContext;HTMLCanvasElement.prototype.getContext=function(kind,...args){if(kind.includes('webgl'))return null;return original.call(this,kind,...args);};});
-  await page.goto('/');await expect(page.locator('#bootStatus')).toContainText('could not load');await expect(page.locator('#bootRetry')).toBeVisible();
+  await page.goto('/');await expect(page.locator('#bootStatus')).toContainText('2D mode');await expect(page.locator('#bootRetry')).toBeVisible();await expect(page.locator('#fallbackPlay')).toBeVisible();
+  await page.locator('#fallbackPlay').click();await expect(page.locator('.fallbackCanvas')).toBeVisible();await expect(page.locator('#boot')).toHaveClass(/hidden/);
 });
 
 test('layout captures keep required controls inside viewport',async({page},info)=>{
