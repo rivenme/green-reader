@@ -14,4 +14,16 @@ try{
   startGame();
   fallbackButton.hidden=true;
   document.getElementById('boot').classList.add('hidden');
-}catch(error){diagnostics.record('startup',error);console.error('Green Reader startup failed',error);fallbackButton.hidden=false;fail('3D graphics are unavailable in this browser. You can still practice with the 2D mode.');}
+}catch(error){
+  diagnostics.record('startup',error);
+  console.error('Green Reader startup failed',error);
+  fallbackButton.hidden=false;
+  fail('3D graphics are unavailable in this browser. Starting 2D practice mode.');
+  try{
+    const {startFallback}=await import('./fallback.js');
+    startFallback();
+  }catch(fallbackError){
+    diagnostics.record('fallback',fallbackError);
+    console.error('Green Reader fallback failed',fallbackError);
+  }
+}
