@@ -9,6 +9,7 @@ import { createAudio } from './audio.js?v=20260909';
 import { createStore, freshRun, validateRun } from './storage.js';
 import { announce, createDialogs } from './ui.js';
 import { bindSlingshot } from './input.js';
+import { distanceCalibration, lieRange, createDragGesture } from './aiming.js';
 
 export function startGame(){
 // ---- world constants ------------------------------------------------------
@@ -35,6 +36,7 @@ let strokes=0, totalVsPar=0, holed=false, dropT=1;
 let aiming=false, aimPlanePt=null, aimStartPx=null, aimNowPx=null;
 let aimPointerId=null, aimOriginPt=null;
 let keyboardAim=null;
+let dragGesture=null,dragAim=null,dragRange=0;
 let trailPts=[];
 let puttStart=null, firstPuttD=0, sessionSG=0; // strokes-gained bookkeeping
 let runScore=0, streakCount=0;   // career run total + consecutive par-or-better
@@ -434,15 +436,21 @@ predGeo.setDrawRange(0,0);
 const predPts=new THREE.Points(predGeo, new THREE.PointsMaterial({color:0xffeb78, size:0.16, transparent:true, opacity:0.9}));
 predPts.frustumCulled=false;
 scene.add(predPts);
+const finishGeo=new THREE.RingGeometry(0.35,0.46,40).rotateX(-Math.PI/2);
+const finishRing=new THREE.Mesh(finishGeo,new THREE.MeshBasicMaterial({color:0xffeb78,side:THREE.DoubleSide,depthTest:false}));
+finishRing.renderOrder=2;finishRing.visible=false;scene.add(finishRing);
+const finishLabel=document.getElementById('finishMarkerLabel');
+function hidePrediction(){predGeo.setDrawRange(0,0);finishRing.visible=false;finishLabel.hidden=true;}
 
 let predictionKey='';
 function updatePredicted(){
-  const show=document.getElementById('optPath').checked;
+  const show=mode==='practice' && document.getElementById('optPath').checked;
   const aim=currentAim();
-  if(!show || ball.moving || holed || !aim){ predictionKey='';predGeo.setDrawRange(0,0); return; }
-  const key=JSON.stringify([LV,ball.x,ball.y,aim,physicsOptions()]);
+  if(!show || ball.moving || holed || !aim){ predictionKey='';hidePrediction(); return; }
+  const key=JSON.stringify([LV,ball.x,ball.y,aim,physicsOptions(),document.getElementById('optErr').checked]);
   if(key===predictionKey)return;predictionKey=key;
-  const pts=simulatePath(ball.x, ball.y, aim.vx, aim.vy);
+  const prediction=simulate(level,{x:ball.x,y:ball.y,vx:aim.vx,vy:aim.vy},physicsOptions());
+  const pts=prediction.pts;
   const a=predGeo.attributes.position;
   const n=Math.min(pts.length, PRED_MAX);
   for(let i=0;i<n;i++){
@@ -450,6 +458,19 @@ function updatePredicted(){
   }
   predGeo.setDrawRange(0,n);
   a.needsUpdate=true;
+  // A simulation that reaches its time limit has no known stopping point.
+  finishRing.visible=!prediction.ball.moving;
+  finishRing.position.set(prediction.ball.x,elev(prediction.ball.x,prediction.ball.y)*VS+0.24,prediction.ball.y);
+  finishLabel.textContent=prediction.holed?'Expected finish · in cup':'Expected finish';
+  if(document.getElementById('optErr').checked)finishLabel.textContent+=' · before stroke error';
+}
+function positionFinishLabel(){
+  finishLabel.hidden=!finishRing.visible || modalOpen;
+  if(finishLabel.hidden)return;
+  const point=finishRing.position.clone().project(camera);
+  if(point.z< -1 || point.z>1 || Math.abs(point.x)>1 || Math.abs(point.y)>1){finishLabel.hidden=true;return;}
+  finishLabel.style.left=Math.max(90,Math.min(innerWidth-90,(point.x+1)*innerWidth/2))+'px';
+  finishLabel.style.top=Math.max(24,Math.min(innerHeight-40,(1-point.y)*innerHeight/2-28))+'px';
 }
 
 // ---- green read (the caddie card) ---------------------------------------------
@@ -545,19 +566,23 @@ function refreshBestRoute(){
 let aimTube=null;
 let aimRenderKey='';
 function updateAimTube(){
-  const value=currentAim();const key=JSON.stringify([value,ball.x,ball.y,aiming]);
+  const value=currentAim();const key=JSON.stringify([value,ball.x,ball.y,aiming,distanceRange]);
   if(key===aimRenderKey)return;aimRenderKey=key;
   if(aimTube){ scene.remove(aimTube); aimTube.geometry.dispose(); aimTube.material.dispose(); aimTube=null; }
   const aim=currentAim();
-  document.getElementById('pwrFill').style.width=(aim?aim.power*100:0)+'%';
+  const strength=aim?Math.min(1,aim.distance/(aiming?dragRange:distanceRange)):0;
+  document.getElementById('pwrFill').style.width=(strength*100)+'%';
   document.getElementById('pwrFill').style.background=
-    aim && aim.power>0.8 ? '#e85050' : aim && aim.power>0.5 ? '#ffce5a' : 'var(--accent)';
-  // flat-green roll-out estimate for this power: d = v² / (2µ)
-  const sp0=aim?aim.power*MAXSPEED:0;
+    strength>0.8 ? '#e85050' : strength>0.5 ? '#ffce5a' : 'var(--accent)';
   document.getElementById('uiCarry').textContent=
-    aim ? (sp0*sp0/(2*frictionDecel())).toFixed(0)+' ft' : '—';
+    aim ? aim.distance.toFixed(1)+' ft on flat ground' : '—';
+  if(aiming){
+    document.getElementById('powerValue').textContent=(aim?.distance||0).toFixed(1)+' ft';
+    document.getElementById('shotPower').value=aim?.distance||0;
+    document.getElementById('shotPower').setAttribute('aria-valuetext',(aim?.distance||0).toFixed(1)+' feet on flat ground');
+  }
   if((!aiming && !keyboardAim) || !aim) return;
-  const len=4+aim.power*14;
+  const len=aim.distance;
   const dir={x:aim.vx, y:aim.vy};
   const dl=Math.hypot(dir.x,dir.y)||1;
   const pts=[];
@@ -568,7 +593,7 @@ function updateAimTube(){
     pts.push(new THREE.Vector3(fx, elev(fx,fz)*VS+0.22, fz));
   }
   const curve=new THREE.CatmullRomCurve3(pts);
-  const col=aim.power>0.8?0xe85050:aim.power>0.5?0xffce5a:0x7ee081;
+  const col=strength>0.8?0xe85050:strength>0.5?0xffce5a:0x7ee081;
   aimTube=new THREE.Mesh(
     new THREE.TubeGeometry(curve, 30, 0.07, 6, false),
     new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:0.95})
@@ -594,24 +619,25 @@ function planeHit(){
   return raycaster.ray.intersectPlane(plane, out) ? out : null;
 }
 function currentAim(){
-  if(!aiming && keyboardAim)return keyboardAim;
-  if(!aimPlanePt || !aimStartPx || !aimNowPx) return null;
+  return aiming?dragAim:keyboardAim;
+}
+function updateDragAim(e){
+  const sample=dragGesture.move(e.clientX,e.clientY,e.timeStamp);
+  if(sample.distance<0.2){dragAim=null;return;}
+  rayAt({clientX:sample.x,clientY:sample.y});
+  aimPlanePt=planeHit();if(!aimPlanePt)return;
   const dx=aimOriginPt.x-aimPlanePt.x, dz=aimOriginPt.z-aimPlanePt.z;     // slingshot direction (world)
-  if(Math.hypot(dx,dz)<1e-4) return null;
-  // power from SCREEN pixels with a mild ease-out: a comfortable pull covers
-  // most putts and the feel doesn't change with camera angle or distance
-  const drag=Math.hypot(aimNowPx.x-aimStartPx.x, aimNowPx.y-aimStartPx.y);
-  const power=Math.min(1, Math.pow(drag/maxDragPx(), 0.80));
-  if(power<0.02) return null;
+  if(Math.hypot(dx,dz)<1e-4){dragAim=null;return;}
   const ang=Math.atan2(dz,dx);
-  const sp=power*MAXSPEED;
-  return {vx:Math.cos(ang)*sp, vy:Math.sin(ang)*sp, power};
+  const sp=distanceCalibration(stimp).speedForDistance(sample.distance);
+  dragAim={vx:Math.cos(ang)*sp,vy:Math.sin(ang)*sp,power:sp/MAXSPEED,distance:sample.distance};
 }
 
 function clearAim(){
   aiming=false;aimPointerId=null;controls.enabled=true;
+  dragGesture=null;dragAim=null;
   aimPlanePt=null;aimOriginPt=null;aimStartPx=aimNowPx=null;keyboardAim=null;
-  document.getElementById('btnPutt').textContent='Putt';updateAimTube();
+  document.getElementById('btnPutt').textContent='Putt';if(level)syncKeyboard(false);updatePredicted();
 }
 function cancelAim(){ input.cancel(); }
 function takeShot(aim){
@@ -641,10 +667,12 @@ const input=bindSlingshot(renderer.domElement,{
   onStart:(e,point)=>{
     camAnim=null;keyboardAim=null;aiming=true;aimPointerId=e.pointerId;aimOriginPt=point.clone();aimPlanePt=point;
     aimStartPx={x:e.clientX,y:e.clientY};aimNowPx=aimStartPx;controls.enabled=false;
+    dragRange=distanceRange;dragAim=null;
+    dragGesture=createDragGesture({x:e.clientX,y:e.clientY,maxPull:maxDragPx(),range:dragRange,time:e.timeStamp});
     document.getElementById('btnPutt').textContent='Release to putt';
     if(tutorial)setLesson(1);
   },
-  onMove:e=>{rayAt(e);const hit=planeHit();if(hit)aimPlanePt=hit;aimNowPx={x:e.clientX,y:e.clientY};},
+  onMove:e=>updateDragAim(e),
   onRelease:()=>takeShot(currentAim()),
   onCancel:clearAim,
 });
@@ -664,7 +692,7 @@ function computeBreakStat(){
 }
 function fmtVsPar(v){return v===0?'E':(v>0?'+'+v:''+v);}
 function updateUI(){
-  for(const id of ['btnPutt','aimLeft','aimRight','shotPower'])document.getElementById(id).disabled=ball.moving||holed;
+  for(const id of ['btnPutt','aimLeft','aimRight','shotPower','fullRange'])document.getElementById(id).disabled=ball.moving||holed;
   for(const id of ['optPath','optBest','optGrain','optErr','stimpSlider'])document.getElementById(id).disabled=mode==='career'||tutorial||ball.moving;
   document.getElementById('uiLevel').textContent=LV+' / 50';
   document.getElementById('hudLevel').textContent='Lv '+LV;
@@ -880,6 +908,9 @@ function onResize(){
   camera.updateProjectionMatrix();
 }
 window.addEventListener('resize',()=>{cancelAim();onResize();});
+new ResizeObserver(([entry])=>{
+  document.documentElement.style.setProperty('--putt-controls-height',entry.target.getBoundingClientRect().height+'px');
+}).observe(document.getElementById('shotControls'));
 
 const panelEl=document.getElementById('panel');
 const readCardEl=document.getElementById('readCard');
@@ -905,7 +936,7 @@ const rollAxis=new THREE.Vector3();
 let last=performance.now();
 function frame(now){
   const dt=Math.min(0.25,(now-last)/1000); last=now;
-  if(paused()){audio.pause();if(level && !contextLost){ballMesh.position.set(ball.x,elev(ball.x,ball.y)*VS+BALL_R,ball.y);renderer.render(scene,camera);}requestAnimationFrame(frame);return;}
+  if(paused()){audio.pause();finishLabel.hidden=true;if(level && !contextLost){ballMesh.position.set(ball.x,elev(ball.x,ball.y)*VS+BALL_R,ball.y);renderer.render(scene,camera);}requestAnimationFrame(frame);return;}
   if(!level){ requestAnimationFrame(frame); return; }
   physics(dt);
 
@@ -941,7 +972,8 @@ function frame(now){
   }
   updateFx(dt);
   tickScore();
-  controls.update();
+  if(!aiming)controls.update();
+  positionFinishLabel();
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
@@ -1053,27 +1085,35 @@ function resumeRun(){
   if(holed){resultActions();showMsg(completed?'Course complete!':'Hole complete',`${runScore.toLocaleString()} points · ${fmtVsPar(totalVsPar)} total vs par`);}
   else renderer.domElement.focus();
 }
-let keyAngle=0,keyPower=0.3;
+let keyAngle=0,keyDistance=8,distanceRange=18,fullRange=false;
 function resetKeyboard(show=false){
-  keyAngle=0;keyPower=Math.min(0.95,Math.sqrt(2*frictionDecel()*(dist(ball,level.hole)+1.5))*1.12/MAXSPEED);
+  keyAngle=0;fullRange=false;
+  distanceRange=lieRange(dist(ball,level.hole),distanceCalibration(stimp).maxDistance);
+  keyDistance=Math.max(0.2,Math.min(distanceRange,Math.round((dist(ball,level.hole)+0.5)*10)/10));
   keyboardAim=null;syncKeyboard(show);
 }
 function syncKeyboard(show=true){
   const angle=Math.atan2(level.hole.y-ball.y,level.hole.x-ball.x)+keyAngle*Math.PI/180;
-  if(show)keyboardAim={vx:Math.cos(angle)*keyPower*MAXSPEED,vy:Math.sin(angle)*keyPower*MAXSPEED,power:keyPower};
+  const speed=distanceCalibration(stimp).speedForDistance(keyDistance);
+  if(show)keyboardAim={vx:Math.cos(angle)*speed,vy:Math.sin(angle)*speed,power:speed/MAXSPEED,distance:keyDistance};
   document.getElementById('aimValue').textContent=keyAngle===0?'At cup':Math.abs(keyAngle).toFixed(1)+'° '+(keyAngle>0?'right':'left');
-  document.getElementById('powerValue').textContent=Math.round(keyPower*100)+'%';
-  document.getElementById('shotPower').value=Math.round(keyPower*100);
+  document.getElementById('powerValue').textContent=keyDistance.toFixed(1)+' ft';
+  document.getElementById('shotPower').max=distanceRange;
+  document.getElementById('shotPower').value=keyDistance;
+  document.getElementById('shotPower').setAttribute('aria-valuetext',keyDistance.toFixed(1)+' feet on flat ground');
+  document.getElementById('fullRange').textContent=fullRange?'Use close range':'Extend range';
+  document.getElementById('fullRange').setAttribute('aria-pressed',String(fullRange));
   updateAimTube();
 }
 function adjustKeyboard(angle,power){
-  if(ball.moving||holed)return;
-  keyAngle=Math.max(-90,Math.min(90,keyAngle+angle*0.5));keyPower=Math.max(0.02,Math.min(1,keyPower+power*0.01));syncKeyboard();
+  if(ball.moving||holed||aiming)return;
+  keyAngle=Math.max(-90,Math.min(90,keyAngle+angle*0.5));
+  keyDistance=Math.max(0.2,Math.min(distanceRange,Math.round((keyDistance+power*0.1)*10)/10));syncKeyboard();
 }
 const lessons=[
   ['1 · Choose a line','This first green is flat. Grab the ball, or use the aim buttons below.'],
-  ['2 · Set the pace','Drag back to add power, then release. With buttons, set power and press Putt.'],
-  ['3 · Watch the roll','Direction sets the starting line. Power controls how far it rolls.'],
+  ['2 · Set the distance','Try 8 ft for this flat putt. Drag back, then release; or set the distance and press Putt.'],
+  ['3 · Watch the roll','The bar shows flat-ground reach. On sloping greens, uphill stops shorter and downhill runs farther.'],
   ['Try the finish','Adjust your pace and putt again. Retry lesson resets the ball.']
 ];
 function setLesson(step){tutorialStep=step;document.getElementById('lessonTitle').textContent=lessons[step][0];document.getElementById('lessonText').textContent=lessons[step][1];}
@@ -1101,7 +1141,14 @@ document.getElementById('btnPutt').disabled=false;
 document.getElementById('btnPutt').onclick=()=>{if(!keyboardAim)syncKeyboard();takeShot(keyboardAim);};
 document.getElementById('aimLeft').onclick=()=>adjustKeyboard(-1,0);
 document.getElementById('aimRight').onclick=()=>adjustKeyboard(1,0);
-document.getElementById('shotPower').oninput=e=>{if(ball.moving||holed)return;keyPower=+e.target.value/100;syncKeyboard();};
+document.getElementById('shotPower').oninput=e=>{if(ball.moving||holed||aiming)return;keyDistance=+e.target.value;syncKeyboard();};
+document.getElementById('fullRange').onclick=()=>{
+  if(ball.moving||holed||aiming)return;
+  fullRange=!fullRange;
+  const calibration=distanceCalibration(stimp);
+  distanceRange=fullRange?Math.floor(calibration.maxDistance*10)/10:lieRange(dist(ball,level.hole),calibration.maxDistance);
+  keyDistance=Math.min(keyDistance,distanceRange);syncKeyboard();
+};
 for(const id of ['optSlope','optPath','optBest','optGrid','optGrain','optErr','optSnd','optMotion']){
   document.getElementById(id).addEventListener('change',e=>{
     if(e.target.disabled)return;settings[id]=e.target.checked;persist();

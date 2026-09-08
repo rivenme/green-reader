@@ -233,6 +233,10 @@ body.careerMode .practiceRead{display:none;}
 #shotControls{position:fixed;bottom:max(16px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);width:min(440px,calc(100vw - 32px));z-index:12;padding:12px 16px;border:1px solid #ffffff25;border-radius:16px;background:#18211aee;backdrop-filter:blur(12px);box-shadow:0 8px 28px #0005;}
 .shotHead,.shotRow{display:flex;align-items:center;gap:8px;}
 .shotHead{justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:7px;}
+.reachRow{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);}
+.reachRow #fullRange{width:auto;flex-shrink:0;margin:0;padding:2px 5px;font-size:11px;min-height:44px;background:transparent;border:0;text-decoration:underline;}
+#finishMarkerLabel{position:fixed;z-index:9;transform:translateX(-50%);padding:4px 8px;border-radius:12px;background:#18211ae8;color:#ffeb78;font-size:11px;pointer-events:none;white-space:nowrap;}
+@media(pointer:coarse){.keyboardOnly{display:none;}}
 .shotRow button{width:48px;margin:0;flex-shrink:0;}
 .shotRow #btnPutt{width:76px;font-weight:700;}
 #shotPower{min-width:40px;min-height:44px;}
@@ -323,3 +327,7 @@ body.tutorialMode #readCard{display:none;}
 .nativeApp .overlay{padding:calc(env(safe-area-inset-top) + 12px) calc(env(safe-area-inset-right) + 12px) calc(env(safe-area-inset-bottom) + 12px) calc(env(safe-area-inset-left) + 12px);}
 .nativeApp .ovcard{max-height:100%;}
 @media(max-height:500px){.nativeApp #readCard{width:210px;}.nativeApp #lesson{left:calc(env(safe-area-inset-left) + 12px);}.nativeApp #panel{bottom:calc(env(safe-area-inset-bottom) + 125px);}}
+
+#quickBtns,.nativeApp #quickBtns{bottom:calc(env(safe-area-inset-bottom) + var(--putt-controls-height,180px) + 24px);}
+#panel,.nativeApp #panel{bottom:calc(env(safe-area-inset-bottom) + var(--putt-controls-height,180px) + 24px);max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--putt-controls-height,180px) - 100px);}
+.saveNotice,.nativeApp .saveNotice{bottom:calc(env(safe-area-inset-bottom) + var(--putt-controls-height,180px) + 24px);}

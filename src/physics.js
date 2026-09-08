@@ -48,8 +48,8 @@ export function rollStep(b, level, options={}, h=STEP){
   }
   b.x=nx;b.y=ny;
   const m=0.6;
-  if(b.x<m||b.x>GW-m){b.x=Math.max(m,Math.min(GW-m,b.x));b.vx*=-0.25;}
-  if(b.y<m||b.y>GH-m){b.y=Math.max(m,Math.min(GH-m,b.y));b.vy*=-0.25;}
+  if(!options.ignoreBounds && (b.x<m||b.x>GW-m)){b.x=Math.max(m,Math.min(GW-m,b.x));b.vx*=-0.25;}
+  if(!options.ignoreBounds && (b.y<m||b.y>GH-m)){b.y=Math.max(m,Math.min(GH-m,b.y));b.vy*=-0.25;}
   if(Math.hypot(b.vx,b.vy)<0.12 && G*Math.hypot(g.x,g.y)<resistance*1.02){
     if(!options.ignoreCup && Math.hypot(b.x-hx,b.y-hy)<radius+0.09 && b.lipCooldown===0) return capture();
     b.vx=b.vy=0;b.moving=false;return 'stopped';

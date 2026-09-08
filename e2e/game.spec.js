@@ -10,7 +10,7 @@ test('loads without runtime errors and teaches the first putt',async({page},info
   await page.getByRole('button',{name:'Learn with your first putt'}).click();
   await expect(page.locator('#lessonTitle')).toHaveText('1 · Choose a line');
   await page.screenshot({path:info.outputPath('lesson.png')});
-  await page.getByRole('slider',{name:'Putt power'}).fill('26');
+  await page.getByRole('slider',{name:'Putt distance'}).fill('8');
   await page.getByRole('button',{name:'Putt',exact:true}).click();
   await expect(page.locator('#uiStrokes')).toHaveText('1');
   await expect(page.locator('#msgText')).toContainText('Your first read, made.',{timeout:15000});

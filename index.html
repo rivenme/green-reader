@@ -96,12 +96,12 @@
       <div class="row"><span>Stimp</span><b id="uiStimp">10.0</b></div>
       <input type="range" aria-label="Green speed in Stimp" id="stimpSlider" min="7" max="14" step="0.5" value="10">
       <div class="legend" style="margin-top:2px">7 slow · 10 normal · 13 tournament</div>
-      <div class="row" style="margin-top:10px"><span>Power</span><b id="uiCarry">—</b></div>
+      <div class="row" style="margin-top:10px"><span>Reach</span><b id="uiCarry">—</b></div>
       <div id="pwrTrack"><div id="pwrFill"></div></div>
       <hr/>
       <h2>Learning Aids</h2>
       <label class="toggle"><input type="checkbox" id="optSlope" checked> Break flow dots</label>
-      <label class="toggle"><input type="checkbox" id="optPath"> Show predicted break path</label>
+      <label class="toggle"><input type="checkbox" id="optPath"> Predicted path & expected finish</label>
       <label class="toggle"><input type="checkbox" id="optBest"> Best line to hole</label>
       <label class="toggle"><input type="checkbox" id="optGrid" checked> Grid &amp; contour lines</label>
       <div class="legend">
@@ -139,10 +139,12 @@
 
 <section id="lesson" hidden aria-label="First putt lesson"><strong id="lessonTitle"></strong><p id="lessonText"></p><div class="lessonActions"><button id="lessonRetry">Retry lesson</button><button id="lessonSkip">Exit lesson</button></div></section>
 <section id="shotControls" aria-label="Putt controls">
-  <div class="shotHead"><span id="aimValue">At cup</span><span>Power <b id="powerValue">30%</b></span></div>
-  <div class="shotRow"><button id="aimLeft" aria-label="Aim left">←</button><button id="aimRight" aria-label="Aim right">→</button><input id="shotPower" aria-label="Putt power" type="range" min="2" max="100" value="30"><button id="btnPutt" class="primary">Putt</button></div>
-  <p id="keyboardHint">Drag the ball back, or use ← → to aim · ↑ ↓ for power · Space to putt</p>
+  <div class="shotHead"><span id="aimValue">At cup</span><span>Aim for <b id="powerValue">8.0 ft</b></span></div>
+  <div class="shotRow"><button id="aimLeft" aria-label="Aim left">←</button><button id="aimRight" aria-label="Aim right">→</button><input id="shotPower" aria-label="Putt distance" aria-describedby="reachHint" type="range" min="0.2" max="18" step="0.1" value="8"><button id="btnPutt" class="primary">Putt</button></div>
+  <div class="reachRow"><span id="reachHint">Flat-ground reach · slopes change the finish</span><button id="fullRange" aria-pressed="false">Extend range</button></div>
+  <p id="keyboardHint">Drag back, then release. <span class="keyboardOnly">← → aim · ↑ ↓ distance · Space putts</span></p>
 </section>
+<span id="finishMarkerLabel" hidden>Expected finish</span>
 <p id="saveStatus" role="status" class="saveNotice"></p>
 </main>
   <div id="badges" class="overlay hidden" role="dialog" aria-modal="true" aria-label="Achievement badges"><div class="ovcard">
@@ -169,10 +171,10 @@
 <div id="graphicsLost" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="graphicsTitle" data-dismissible="false"><div class="ovcard"><h2 id="graphicsTitle">Graphics paused</h2><p>The browser interrupted the 3D view. Your current progress has been checkpointed. Reload to rebuild the green.</p><button id="graphicsReload">Reload green</button></div></div>
 <div id="help" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle"><div class="ovcard helpCard"><h2 id="helpTitle">A little help with your read</h2>
   <p><b>Direction:</b> drag back from the ball, away from where you want it to go. Release to putt. Or use the aim buttons and Putt.</p>
-  <p><b>Pace:</b> more power rolls farther. Uphill needs more pace; downhill needs less.</p>
-  <p><b>Break:</b> dots move downhill. Aim uphill and let the slope curve your putt. Practice settings can show a predicted path or search for a makeable line.</p>
+  <p><b>Distance:</b> drag back or set “Aim for” in feet. The bar shows how far the ball would roll on flat ground at this green speed. Uphill usually stops shorter; downhill rolls farther. Small pulls give finer control. Use Extend range for longer shots.</p>
+  <p><b>Break:</b> dots move downhill. Aim uphill and let the slope curve your putt. In Practice, enable Predicted path &amp; expected finish to see the simulated stopping point. With stroke error enabled, the preview is before random error.</p>
   <p><b>Camera:</b> drag away from the ball to orbit, pinch or scroll to zoom. C returns behind the ball; V gives a low view.</p>
-  <p><b>Keyboard:</b> focus the green. Arrows aim and adjust power, Space putts, Escape cancels. R retries and N skips in practice. H opens settings.</p>
+  <p><b>Keyboard:</b> focus the green. Left/right aim; up/down adjust distance by 0.1 ft. Space putts, Escape cancels. R retries and N skips in practice. H opens settings.</p>
   <p><b>Competition:</b> fixed layouts, Stimp 10, grain on, stroke error off. No retries, skipping, or predicted/best lines. Scores are local to this browser.</p>
   <p class="finePrint">This is a stylized simulation with exaggerated elevation and simplified cup behavior. Benchmark stats are illustrative, not validated coaching or PGA Tour measurements. No accounts, ads, or automatic tracking. Progress is stored in this browser; clearing site data removes it.</p>
   <a class="feedbackLink" href="https://github.com/rivenme/green-reader/issues/new" target="_blank" rel="noopener noreferrer">Report a problem or suggest an improvement ↗</a><button id="exportDiagnostics">Download error report</button><p class="finePrint">The report contains recent errors and browser details. Nothing is sent automatically. Attach it to your issue if useful.</p><button data-close>Back to the green</button>
