@@ -45,6 +45,11 @@ Connect record, archive signing, and upload through Xcode.
   WebView behavior. There is no remote development-server URL.
 - `vite.config.js` strips the browser-only import map from the iOS build.
 - Native-only CSS accounts for the notch, home indicator, and landscape edges.
+- Choose **Drag the ball** for a clear lower screen, or **Aim buttons** for a
+  slider and Putt button, on the home screen or in Settings. The choice is saved.
+  Drag power appears beside the ball only during the gesture. After a miss, tap
+  **Details** to reveal advice and replay. The camera reframes once the ball
+  stops; **Reframe after each putt** in Settings can disable this.
 - Settings → Touch & cup offers consistent stroke controls, a feet assist, and
   the original adaptive distance control. Practice drills are in Settings.
 - The haptics plugin is included through Swift Package Manager after sync.

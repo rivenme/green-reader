@@ -1,7 +1,7 @@
 import {test,expect} from '@playwright/test';
 
 test('distance control holes an eight-foot lesson and displays feet',async({page})=>{
-  await page.goto('/');await page.locator('#startLesson').click();
+  await page.goto('/');await page.locator('[data-shot-input="buttons"]').click();await page.locator('#startLesson').click();
   await page.getByRole('slider',{name:'Putt distance'}).fill('8');
   await expect(page.locator('#powerValue')).toHaveText('8.0 ft');
   await expect(page.locator('#shotPower')).toHaveAttribute('aria-valuetext','8.0 feet on flat ground');
@@ -10,7 +10,7 @@ test('distance control holes an eight-foot lesson and displays feet',async({page
 });
 
 test('practice preview shows an endpoint, disappears for the shot, and stays off in competition',async({page},info)=>{
-  await page.goto('/');await page.locator('#startPractice').click();
+  await page.goto('/');await page.locator('[data-shot-input="buttons"]').click();await page.locator('#startPractice').click();
   await page.locator('#panelToggle').click();
   await page.getByText('Green speed & learning aids',{exact:true}).click();
   await page.locator('#optPath').check();await page.locator('#panelToggle').click();

@@ -54,6 +54,7 @@ test('startup graphics failure gives recovery controls',async({page})=>{
 
 test('layout captures keep required controls inside viewport',async({page},info)=>{
   await page.goto('/');await expect(page.locator('#welcome')).toBeVisible();await page.screenshot({path:info.outputPath('welcome.png')});
+  await page.locator('[data-shot-input="buttons"]').click();
   await page.locator('#startPractice').click();
   for(const id of ['btnPutt','aimLeft','aimRight','shotPower','panelToggle']){
     const box=await page.locator('#'+id).boundingBox();const size=page.viewportSize();expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(0);expect(box.x+box.width).toBeLessThanOrEqual(size.width);expect(box.y+box.height).toBeLessThanOrEqual(size.height);
@@ -74,7 +75,7 @@ test('drag restart cancels the stroke and releases pointer ownership',async({pag
 });
 
 test('landscape retains navigation and putting controls',async({page},info)=>{
-  await page.setViewportSize({width:740,height:360});await page.goto('/');await page.locator('#startPractice').click();
+  await page.setViewportSize({width:740,height:360});await page.goto('/');await page.locator('[data-shot-input="buttons"]').click();await page.locator('#startPractice').click();
   await expect(page.locator('#btnPutt')).toBeInViewport();await expect(page.locator('#panelToggle')).toBeInViewport();
   await page.screenshot({path:info.outputPath('landscape.png')});
 });

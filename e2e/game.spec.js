@@ -7,6 +7,7 @@ test('loads without runtime errors and teaches the first putt',async({page},info
   const errors=[];page.on('pageerror',e=>errors.push(e.message));
   await page.goto('/');
   await expect(page.getByRole('heading',{name:'Read the break. Find your pace.'})).toBeVisible();
+  await page.locator('[data-shot-input="buttons"]').click();
   await page.getByRole('button',{name:'Learn with your first putt'}).click();
   await expect(page.locator('#lessonTitle')).toHaveText('1 · Choose a line');
   await page.screenshot({path:info.outputPath('lesson.png')});
@@ -40,14 +41,14 @@ test('practice skip and resume survive reload',async({page})=>{
 test('corrupt storage recovers to a playable game',async({page})=>{
   await page.addInitScript(({key})=>{localStorage.setItem(key,'{"version":1,"career":{"ach":null,"xp":"bad"},"stats":null,"run":{"mode":"career"}}');},{key:SAVE_KEY});
   await page.goto('/');await page.locator('#startPractice').click();
-  await expect(page.locator('#stage canvas')).toBeVisible();await expect(page.locator('#btnPutt')).toBeEnabled();
+  await expect(page.locator('#stage canvas')).toBeVisible();await expect(page.locator('#ballHandle')).toBeVisible();
 });
 
 test('final practice result can be replayed',async({page})=>{
   const l=makeLevel(50);const run={courseVersion:COURSE_VERSION,mode:'practice',LV:50,ball:{...l.hole,vx:0,vy:0,moving:false,rolling:true,skidU:0},strokes:2,totalVsPar:0,holed:true,completed:true,runScore:0,streakCount:0,runStats:freshRun(),sessionSG:0,puttStart:null};
   await page.addInitScript(({key,run,settings,career})=>localStorage.setItem(key,JSON.stringify({version:1,run,settings,career,stats:{}})),{key:SAVE_KEY,run,settings:defaultSettings(),career:defaultCareer()});
   await page.goto('/');await page.locator('#resumeRun').click();await page.locator('#replayResult').click();
-  await expect(page.locator('#result')).toBeHidden();await expect(page.locator('#btnPutt')).toBeEnabled();await expect(page.locator('#hudLevel')).toHaveText('Lv 50');
+  await expect(page.locator('#result')).toBeHidden();await expect(page.locator('#ballHandle')).toBeVisible();await expect(page.locator('#hudLevel')).toHaveText('Lv 50');
 });
 
 test('keyboard focus stays within help and returns to opener',async({page})=>{

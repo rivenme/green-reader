@@ -494,9 +494,11 @@ function updatePaceFeedback(){
   if(!level)return;
   const panel=document.getElementById('paceFeedback');
   panel.hidden=mode!=='practice'||tutorial||!!drill||ball.moving||holed||!document.getElementById('optPace').checked;
+  document.getElementById('dragPace').hidden=panel.hidden;
   if(ball.moving||holed)return;
   if(aiming&&!dragAim){
     coachKey='';panel.dataset.pace='none';document.getElementById('paceLabel').textContent='Pull back to choose pace';
+    document.getElementById('dragPace').textContent='Pull back to choose pace';document.getElementById('dragPower').dataset.pace='none';
     document.getElementById('lineLabel').textContent='';document.getElementById('uiBreakFt').textContent='—';return;
   }
   const aim=currentAim()||valueAim();
@@ -506,6 +508,8 @@ function updatePaceFeedback(){
   if(panel.hidden)return;
   const read=assessPace(level,{x:ball.x,y:ball.y,vx:aim.vx,vy:aim.vy},physicsOptions());
   panel.dataset.pace=read.kind;
+  document.getElementById('dragPower').dataset.pace=read.kind;
+  document.getElementById('dragPace').textContent=read.label;
   document.getElementById('paceLabel').textContent=read.label;
   document.getElementById('lineLabel').textContent=read.line+(document.getElementById('optErr').checked?' · before stroke error':'');
 }
@@ -523,6 +527,9 @@ function invalidateFeedback(){
 }
 function showPuttFeedback(){
   if(!lastAttempt)return;
+  document.getElementById('feedbackDetails').hidden=true;
+  document.getElementById('feedbackToggle').setAttribute('aria-expanded','false');
+  document.getElementById('feedbackToggle').textContent='Details';
   lastResult=simulate(level,lastAttempt.start,lastAttempt.options);
   const title=ball.recovered?'At the fringe edge · play from here':describeFinish(lastAttempt.start,level.hole,ball);
   document.getElementById('finishText').textContent=title;
@@ -719,10 +726,15 @@ function updateAimTube(){
   if(key===aimRenderKey)return;aimRenderKey=key;
   if(aimTube){ scene.remove(aimTube); aimTube.geometry.dispose(); aimTube.material.dispose(); aimTube=null; }
   const aim=currentAim();
-  const strength=aim?aim.controlValue/(aiming?dragRange:distanceRange):0;
+  const strength=aim?Math.max(0,Math.min(1,aim.controlValue/(aiming?dragRange:distanceRange))):0;
   document.getElementById('pwrFill').style.width=(strength*100)+'%';
   document.getElementById('pwrFill').style.background=
-    '#d5e4da';
+    '#7ee081';
+  const meter=document.getElementById('dragPower');
+  meter.hidden=!aiming || settings.shotInput!=='drag' || paused();
+  document.getElementById('dragPowerFill').style.width=(strength*100)+'%';
+  document.getElementById('dragPowerCaption').textContent=inputMode()==='stroke'?'Stroke':'Flat reach';
+  document.getElementById('dragPowerValue').textContent=formatControl(aim?.controlValue||0);
   document.getElementById('uiCarry').textContent=
     aim ? aim.distance.toFixed(1)+' ft on flat ground' : '—';
   if(aiming){
@@ -733,7 +745,8 @@ function updateAimTube(){
     document.getElementById('aimValue').textContent=keyAngle===0?'At cup':Math.abs(keyAngle).toFixed(1)+'° '+(keyAngle>0?'right':'left');
   }
   if((!aiming && !keyboardAim) || !aim) return;
-  const len=Math.min(2,dist(ball,level.hole)*.5);
+  // A growing strength indicator, not a predicted stopping point.
+  const len=.25+7.75*strength;
   const dir={x:aim.vx, y:aim.vy};
   const dl=Math.hypot(dir.x,dir.y)||1;
   const pts=[];
@@ -744,7 +757,7 @@ function updateAimTube(){
     pts.push(new THREE.Vector3(fx, elev(fx,fz)*VS+0.22, fz));
   }
   const curve=new THREE.CatmullRomCurve3(pts);
-  const col=0xe1eee5;
+  const col=0x7ee081;
   aimTube=new THREE.Mesh(
     new THREE.TubeGeometry(curve, 30, 0.07, 6, false),
     new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:0.95})
@@ -814,7 +827,7 @@ function takeShot(aim){
   if(tutorial)setLesson(2);
 }
 const input=bindSlingshot(renderer.domElement,{
-  canStart:()=>!ball.moving && !holed && !paused() && !drill?.done,
+  canStart:()=>settings.shotInput==='drag' && !ball.moving && !holed && !paused() && !drill?.done,
   hit:e=>{
     rayAt(e);const point=planeHit();if(!point)return null;
     // A screen-space target remains comfortable at every camera zoom.
@@ -907,10 +920,10 @@ function onHoled(){
 function onStopped(){
   controls.enabled=true;
   showPuttFeedback();
-  if(drill){finishDrillAttempt(false);return;}
+  if(drill){finishDrillAttempt(false);if(settings.optAutoCamera)snapCamera(true);return;}
   if(tutorial){
     puttStart=null;updateUI();updateRead();resetKeyboard();
-    setLesson(3);return;
+    setLesson(3);if(settings.optAutoCamera)snapCamera(true);return;
   }
   if(puttStart){
     const fin=dist(ball,level.hole);
@@ -929,7 +942,7 @@ function onStopped(){
   document.getElementById('btnPutt').textContent='Putt';
   refreshBestRoute(); updateRead();
   resetKeyboard();persist();announce(document.getElementById('uiLast').textContent);
-  // Keep the outcome in view. Reframe only when the player asks or starts again.
+  if(settings.optAutoCamera)snapCamera(true);
 }
 
 // Career celebration: scale the juice to the hole result and bank points.
@@ -966,6 +979,16 @@ function celebrate(){
 }
 
 let camAnim=null;
+controls.addEventListener('start',()=>{camAnim=null;});
+function moveCamera(toP,toT,offset={x:0,y:0},animate=true){
+  const fromOffset={x:camera.view?.enabled?camera.view.offsetX:0,y:camera.view?.enabled?camera.view.offsetY:0};
+  if(animate && !reducedMotion()){
+    camAnim={t:0,fromP:camera.position.clone(),fromT:controls.target.clone(),toP,toT,fromOffset,toOffset:offset};
+  }else{
+    camAnim=null;camera.position.copy(toP);controls.target.copy(toT);
+    camera.setViewOffset(innerWidth,innerHeight,offset.x,offset.y,innerWidth,innerHeight);controls.update();
+  }
+}
 function snapCamera(animate){
   if(ball.moving || aiming)return;
   readView=false;document.getElementById('qbRead').setAttribute('aria-pressed','false');
@@ -973,15 +996,18 @@ function snapCamera(animate){
   const hx=level.hole.x, hz=level.hole.y;
   const d=Math.hypot(hx-bx,hz-bz)||1;
   const dx=(hx-bx)/d, dz=(hz-bz)/d;
-  const w=innerWidth,h=innerHeight,shotRect=document.getElementById('shotControls').getBoundingClientRect();
-  const centerX=h<500&&w>600?Math.max(150,(shotRect.left-16)/2):w/2;
+  const w=innerWidth,h=innerHeight,shotControls=document.getElementById('shotControls'),shotRect=shotControls.getBoundingClientRect();
+  const centerX=h<500&&w>600&&shotControls.getClientRects().length?Math.max(150,(shotRect.left-16)/2):w/2;
   let top=64;
   for(const id of ['readCard','lesson','drillPanel','gameNav']){
     const el=document.getElementById(id),rect=el.getBoundingClientRect();
     if(el.getClientRects().length&&rect.left<centerX+24&&rect.right>centerX-24)top=Math.max(top,rect.bottom+20);
   }
-  const covered=shotRect.left<centerX+24&&shotRect.right>centerX-24;
-  const bottom=covered?shotRect.top-28:h-30;
+  let bottom=h-40;
+  for(const id of ['shotControls','puttFeedback']){
+    const el=document.getElementById(id),rect=el.getBoundingClientRect();
+    if(el.getClientRects().length&&rect.left<centerX+24&&rect.right>centerX-24)bottom=Math.min(bottom,rect.top-28);
+  }
   top=Math.min(top,bottom-100);
   const laneHeight=bottom-top,centerY=(top+bottom)/2;
   const toT=new THREE.Vector3((bx+hx)/2,(elev(bx,bz)+elev(hx,hz))*VS/2,(bz+hz)/2);
@@ -995,16 +1021,8 @@ function snapCamera(animate){
     offset.multiplyScalar(1.15);
   }
   const rawCenterY=(1-(projected[0].y+projected[1].y)/2)*h/2;
-  camera.setViewOffset(w,h,w/2-centerX,rawCenterY-centerY,w,h);
   const toP=toT.clone().add(offset);
-  if(animate && !reducedMotion()){
-    camAnim={t:0, fromP:camera.position.clone(), fromT:controls.target.clone(), toP, toT};
-  }else{
-    camAnim=null;
-    camera.position.copy(toP);
-    controls.target.copy(toT);
-    controls.update();
-  }
+  moveCamera(toP,toT,{x:w/2-centerX,y:rawCenterY-centerY},!!animate);
 }
 
 function loadLevel(n, fixed){
@@ -1060,15 +1078,11 @@ document.getElementById('optGrain').onchange=()=>{invalidateFeedback();refreshBe
 function readCamera(){
   if(ball.moving || aiming)return;
   readView=true;document.getElementById('qbRead').setAttribute('aria-pressed','true');
-  camera.clearViewOffset();
   const bx=ball.x, bz=ball.y, hl=level.hole;
   const d=Math.hypot(hl.x-bx,hl.y-bz)||1;
   const dx=(hl.x-bx)/d, dz=(hl.y-bz)/d;
   const bY=elev(bx,bz)*VS;
-  camAnim={t:0, fromP:camera.position.clone(), fromT:controls.target.clone(),
-    toP:new THREE.Vector3(bx-dx*5, bY+1.7, bz-dz*5),
-    toT:new THREE.Vector3(hl.x, elev(hl.x,hl.y)*VS+0.3, hl.y)};
-  if(reducedMotion()){camera.position.copy(camAnim.toP);controls.target.copy(camAnim.toT);camAnim=null;controls.update();}
+  moveCamera(new THREE.Vector3(bx-dx*5,bY+1.7,bz-dz*5),new THREE.Vector3(hl.x,elev(hl.x,hl.y)*VS+0.3,hl.y));
 }
 document.getElementById('optSlope').onchange=e=>{flow.pts.visible=e.target.checked;};
 document.getElementById('optGrid').onchange=e=>{uContour.value=e.target.checked?1:0;};
@@ -1181,6 +1195,9 @@ function frame(now){
     const e=k*k*(3-2*k);                       // smoothstep ease
     camera.position.lerpVectors(camAnim.fromP, camAnim.toP, e);
     controls.target.lerpVectors(camAnim.fromT, camAnim.toT, e);
+    camera.setViewOffset(innerWidth,innerHeight,
+      THREE.MathUtils.lerp(camAnim.fromOffset.x,camAnim.toOffset.x,e),
+      THREE.MathUtils.lerp(camAnim.fromOffset.y,camAnim.toOffset.y,e),innerWidth,innerHeight);
     if(k>=1) camAnim=null;
   }
   updateFx(dt);
@@ -1188,8 +1205,13 @@ function frame(now){
   if(!aiming&&!ball.moving)controls.update();
   positionFinishLabel();
   const handle=document.getElementById('ballHandle'),point=worldToScreen(ball.x,ball.y);
-  handle.hidden=ball.moving||holed||!!drill?.done;
+  handle.hidden=settings.shotInput!=='drag'||ball.moving||holed||!!drill?.done;
   handle.style.left=point.x+'px';handle.style.top=point.y+'px';
+  const meter=document.getElementById('dragPower');
+  if(!meter.hidden){
+    meter.style.left=Math.max(12,Math.min(innerWidth-144,point.x+32))+'px';
+    meter.style.top=Math.max(70,Math.min(innerHeight-meter.offsetHeight-16,point.y-58))+'px';
+  }
   renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
@@ -1251,12 +1273,29 @@ function tickScore(){
 }
 // Mode is selected from tabs in the side panel (no separate menu screen).
 const modeTabs={ career:document.getElementById('btnCareer'), practice:document.getElementById('btnPractice') };
+function applyInputStyle(){
+  const drag=settings.shotInput==='drag';
+  document.body.classList.toggle('dragMode',drag);
+  document.body.classList.toggle('detailedRead',settings.optDetails);
+  document.getElementById('shotControls').hidden=drag;
+  document.getElementById('shotInput').value=settings.shotInput;
+  for(const button of document.querySelectorAll('[data-shot-input]'))button.setAttribute('aria-pressed',String(button.dataset.shotInput===settings.shotInput));
+  document.documentElement.style.setProperty('--putt-controls-height',document.getElementById('shotControls').getBoundingClientRect().height+'px');
+  coachKey='';
+  if(tutorial)setLesson(tutorialStep);
+}
+function setShotInput(value){
+  if(!['drag','buttons'].includes(value))return;
+  cancelAim();settings.shotInput=value;applyInputStyle();
+  if(level){syncKeyboard(false);updateUI();if(!ball.moving&&!modalOpen)snapCamera(true);}
+  persist();
+}
 function applySettings(){
   userStimp=settings.stimp;stimp=mode==='career'||tutorial?10:userStimp;
   document.body.classList.toggle('careerMode',mode==='career');
   document.body.classList.toggle('tutorialMode',tutorial);
   document.body.classList.toggle('reducedMotion',reducedMotion());
-  for(const id of ['optSlope','optPath','optBest','optGrid','optGrain','optErr','optSnd','optMotion','optHaptics','optPace','optCompare']){
+  for(const id of ['optSlope','optPath','optBest','optGrid','optGrain','optErr','optSnd','optMotion','optHaptics','optPace','optCompare','optAutoCamera','optDetails']){
     const el=document.getElementById(id);el.checked=settings[id];
   }
   for(const id of ['optPath','optBest','optGrain','optErr','stimpSlider']){
@@ -1283,7 +1322,7 @@ function applySettings(){
   document.getElementById('btnPractice').setAttribute('aria-pressed',String(mode==='practice'));
   flow.pts && (flow.pts.visible=document.getElementById('optSlope').checked);
   uContour.value=settings.optGrid?1:0;syncPathBtn();
-  updateDrillStats();
+  applyInputStyle();updateDrillStats();
 }
 function startMode(m){
   drill=null;drillReturnRun=null;
@@ -1356,12 +1395,16 @@ function adjustKeyboard(angle,power){
   keyDistance=Math.max(0.2,Math.min(distanceRange,Math.round((keyDistance+power*(inputMode()==='stroke'?1:.1))*10)/10));syncKeyboard();
 }
 const lessons=[
-  ['1 · Choose a line','This first green is flat. Grab the ball, or use the aim buttons below.'],
-  ['2 · Set the distance','Try 8 ft for this flat putt. Drag back, then release; or set the distance and press Putt.'],
-  ['3 · Watch the roll','The bar shows flat-ground reach. On sloping greens, uphill stops shorter and downhill runs farther.'],
+  ['1 · Choose a line','This first green is flat. Grab the ball and pull back to aim.'],
+  ['2 · Set the distance','Pull back until the readout shows 8 ft, then release.'],
+  ['3 · Watch the roll','The green bar shows strength. The distance readout is for flat ground; slopes change the finish.'],
   ['Try the finish','Adjust your pace and putt again. Retry lesson resets the ball.']
 ];
-function setLesson(step){tutorialStep=step;document.getElementById('lessonTitle').textContent=lessons[step][0];document.getElementById('lessonText').textContent=lessons[step][1];}
+function setLesson(step){
+  tutorialStep=step;document.getElementById('lessonTitle').textContent=lessons[step][0];
+  document.getElementById('lessonText').textContent=settings.shotInput==='buttons'&&step<2?
+    (step===0?'This first green is flat. Use the aim buttons and distance slider below.':'Set the distance to 8 ft, then press Putt.'):lessons[step][1];
+}
 function startLesson(){
   drill=null;drillReturnRun=null;
   dialogs.close();ready=false;activeRun=false;tutorial=true;mode='practice';completed=false;
@@ -1400,6 +1443,12 @@ document.getElementById('fullRange').onclick=()=>{
   if(lastAttempt && !document.getElementById('puttFeedback').hidden)showPuttFeedback();
   persist();
 };
+document.getElementById('shotInput').onchange=e=>setShotInput(e.target.value);
+for(const button of document.querySelectorAll('[data-shot-input]'))button.onclick=()=>setShotInput(button.dataset.shotInput);
+document.getElementById('feedbackToggle').onclick=()=>{
+  const details=document.getElementById('feedbackDetails'),button=document.getElementById('feedbackToggle');
+  details.hidden=!details.hidden;button.setAttribute('aria-expanded',String(!details.hidden));button.textContent=details.hidden?'Details':'Hide';
+};
 for(const id of ['controlMode','strokeScale'])document.getElementById(id).onchange=e=>{
   if(e.target.disabled)return;
   cancelAim();const old=valueAim(),speed=Math.hypot(old.vx,old.vy);
@@ -1426,11 +1475,12 @@ document.getElementById('drillNext').onclick=nextDrill;
 document.getElementById('exitDrill').onclick=exitDrill;
 document.getElementById('drillSummaryExit').onclick=exitDrill;
 document.getElementById('drillRestart').onclick=()=>startDrill(drill.type);
-for(const id of ['optSlope','optPath','optBest','optGrid','optGrain','optErr','optSnd','optMotion','optPace','optCompare','optHaptics']){
+for(const id of ['optSlope','optPath','optBest','optGrid','optGrain','optErr','optSnd','optMotion','optPace','optCompare','optHaptics','optAutoCamera','optDetails']){
   document.getElementById(id).addEventListener('change',e=>{
     if(e.target.disabled)return;settings[id]=e.target.checked;persist();
     if(id==='optPath')syncPathBtn();
     if(id==='optMotion')document.body.classList.toggle('reducedMotion',reducedMotion());
+    if(id==='optDetails'){document.body.classList.toggle('detailedRead',settings.optDetails);if(!ball.moving)snapCamera(true);}
     if(id==='optSnd' && !settings.optSnd)audio.pause();
     if(id==='optCompare')refreshBestRoute();
     coachKey='';updatePaceFeedback();

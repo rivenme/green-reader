@@ -4,7 +4,7 @@ import {freshDrillStats} from './drills.js';
 export const SAVE_KEY='green-reader-v1';
 export const freshRun=()=>({onePutts:0,longest:0,best:0,holes:0,onePuttStreak:0,twoPutts:0,goodLeaves:0});
 export const defaultCareer=()=>({xp:0,bestRun:0,runs:0,ach:[],ball:'white',theme:'classic'});
-export const defaultSettings=()=>({stimp:10,optSlope:true,optPath:false,optBest:false,optGrid:true,optGrain:true,optErr:false,optSnd:true,optMotion:false,optHaptics:true,optPace:true,optCompare:false,controlMode:'stroke',strokeScale:'standard',cupMode:'forgiving',drillSlope:'flat',quality:'auto',tutorialDone:false});
+export const defaultSettings=()=>({stimp:10,optSlope:true,optPath:false,optBest:false,optGrid:true,optGrain:true,optErr:false,optSnd:true,optMotion:false,optHaptics:true,optPace:true,optCompare:false,optAutoCamera:true,optDetails:false,shotInput:'drag',controlMode:'stroke',strokeScale:'standard',cupMode:'forgiving',drillSlope:'flat',quality:'auto',tutorialDone:false});
 const record=x=>x!==null && typeof x==='object' && !Array.isArray(x);
 const finite=(x,min,max)=>typeof x==='number' && Number.isFinite(x) && x>=min && x<=max;
 const count=x=>Number.isSafeInteger(x) && x>=0 && x<=1e12;
@@ -21,7 +21,7 @@ export function validateSettings(raw){
   for(const k of Object.keys(s))if(typeof s[k]==='boolean' && typeof raw[k]==='boolean')s[k]=raw[k];
   if(finite(raw.stimp,7,14))s.stimp=Math.round(raw.stimp*2)/2;
   if(['auto','low','high'].includes(raw.quality))s.quality=raw.quality;
-  for(const [key,values] of Object.entries({controlMode:['stroke','distance','adaptive'],strokeScale:['standard','precision','long'],cupMode:['forgiving','realistic'],drillSlope:['flat','gentle','mixed']})){
+  for(const [key,values] of Object.entries({shotInput:['drag','buttons'],controlMode:['stroke','distance','adaptive'],strokeScale:['standard','precision','long'],cupMode:['forgiving','realistic'],drillSlope:['flat','gentle','mixed']})){
     if(values.includes(raw[key]))s[key]=raw[key];
   }
   return s;

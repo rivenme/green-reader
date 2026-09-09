@@ -39,6 +39,13 @@ Hole results wait for you to continue. The home screen offers **Resume** or a ne
 
 ## Controls
 
+Choose **Drag the ball** or **Aim buttons** on the home screen or in Settings.
+The choice is saved. Drag is the default: the bottom control panel stays hidden,
+and a small power meter appears beside the ball only while pulling back. Aim
+buttons shows the slider and Putt button. Both support keyboard shortcuts.
+The green read starts with distance and elevation; enable **Detailed green read**
+in Settings for more information.
+
 | Control | Action |
 | --- | --- |
 | Drag back from the ball, release | Aim and putt |
@@ -65,8 +72,9 @@ same stroke. Settings → Touch & cup also offers **Distance**, a fixed-range
 flat-ground feet assist, and **Adaptive distance**, the original control that
 changes sensitivity with each lie. The first lesson uses the distance assist.
 
-The neutral meter shows control strength, and a short white guide shows the
-starting direction. Flat-ground reach appears as a number. Practice's optional
+The green bar grows and shrinks with control strength and points along the
+starting direction. Its tip is not a predicted stopping point. In distance-assist
+mode, the drag meter shows flat-ground reach in feet. Practice's optional
 yellow path and Expected finish marker include actual terrain, grain, and the
 selected cup rule. Unsettled simulations have no stopping marker. With random
 stroke error enabled, predictions describe the intended launch before error.
@@ -79,8 +87,9 @@ pace; starting-line misses are reported separately. This band is not a universal
 golf recommendation. The straight-at-cup read uses the selected speed and the
 offset at the cup crossing, not the final lateral displacement.
 
-After a miss, Practice offers a replay from the same lie with the previous path
-and a simulated adjustment expressed in the active control's units. Soft/firm
+After a miss, a compact finish summary appears. Tap **Details** for a replay
+from the same lie with the previous path and a simulated adjustment expressed
+in the active control's units. Soft/firm
 route comparison illustrates alternative makes, not the selected shot's path.
 Replay preserves the launch strength when switching control units or ranges.
 Drills have no random stroke error; the pace target allows the ball to roll
@@ -89,8 +98,10 @@ through so the actual stopping point determines success.
 Dragging retains a six-pixel dead zone and time-based smoothing. The range stays
 fixed during a gesture; camera zoom does not scale touch strength. Release uses
 the last aiming sample without a new lift-off coordinate. A held pull settles
-to the finger's position, and rotation cancels an unfinished stroke. The camera frames the
-ball and cup around the panels and remains steady while the ball rolls.
+to the finger's position, and rotation cancels an unfinished stroke. The camera
+stays steady during the stroke and roll, then smoothly frames the ball and cup
+for the next putt. Disable **Reframe after each putt** for manual framing. Camera
+transitions respect reduced motion and stop when the player starts orbiting.
 Optional native iPhone haptics occur only on impact and success; rolling is silent.
 
 ## Saves and privacy

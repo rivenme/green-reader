@@ -8,12 +8,15 @@ test('malformed values do not poison saved data',()=>{
   for(const x of [null,[],false,'bad',{}, {ach:null,xp:'3'}, {xp:Infinity}])assert.equal(validateCareer(x).xp,0);
   assert.deepEqual(validateStats({'0–5 ft':[9,1]}),{});
   assert.equal(validateSettings({stimp:100,optSnd:'yes'}).stimp,10);
+  assert.equal(validateSettings({shotInput:'unknown'}).shotInput,'drag');
   assert.equal(validateCareer({xp:0,ball:'gold'}).ball,'white');
 });
 test('legacy XP migrates and new envelope roundtrips atomically',()=>{
   const s=storage();s.setItem('gr3d-career',JSON.stringify({xp:6000,ach:['bomb','bad']}));
   const store=createStore(s);assert.equal(store.state.career.xp,6000);assert.deepEqual(store.state.career.ach,['bomb']);
-  assert.ok(store.save({...store.state,run:run()}));assert.deepEqual(createStore(s).state.run,run());assert.ok(s.getItem(SAVE_KEY));
+  const settings={...store.state.settings,shotInput:'buttons',optAutoCamera:false,optDetails:true};
+  assert.ok(store.save({...store.state,settings,run:run()}));
+  assert.deepEqual(createStore(s).state.run,run());assert.deepEqual(createStore(s).state.settings,settings);assert.ok(s.getItem(SAVE_KEY));
 });
 test('missing storage and corrupt JSON recover without throwing',()=>{
   const messages=[];const s=createStore(undefined,m=>messages.push(m));assert.equal(s.save(s.state),false);assert.equal(messages.length,1);

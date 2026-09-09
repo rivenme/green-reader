@@ -26,5 +26,5 @@ test('unavailable storage shows a notice outside the closed settings panel',asyn
   await page.addInitScript(()=>Object.defineProperty(window,'localStorage',{get(){throw new DOMException('Storage blocked','SecurityError');}}));
   await page.goto('/');await page.locator('#startPractice').click();
   await expect(page.locator('#panel')).toBeHidden();await expect(page.locator('#saveStatus')).toBeVisible();
-  await expect(page.locator('#saveStatus')).toContainText('cannot be saved');await expect(page.locator('#btnPutt')).toBeEnabled();
+  await expect(page.locator('#saveStatus')).toContainText('cannot be saved');await expect(page.locator('#ballHandle')).toBeVisible();
 });

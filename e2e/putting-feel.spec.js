@@ -5,6 +5,7 @@ async function openSettings(page){
 }
 async function distanceAssist(page){
   await openSettings(page);
+  await page.locator('#shotInput').selectOption('buttons');
   if(await page.locator('#controlSettings').getAttribute('open')===null)await page.getByText('Touch & cup',{exact:true}).click();
   await page.locator('#controlMode').selectOption('distance');
   await page.locator('#panelToggle').click();
@@ -15,7 +16,7 @@ async function drill(page,button){
   await page.locator(button).click();
 }
 test('stroke repeats between lies; changing range preserves the shot and pace assessment',async({page},info)=>{
-  await page.goto('/');await page.locator('#startPractice').click();
+  await page.goto('/');await page.locator('[data-shot-input="buttons"]').click();await page.locator('#startPractice').click();
   await page.getByRole('slider',{name:'Stroke strength'}).fill('38');
   const pace=await page.locator('#paceLabel').textContent(),reach=await page.locator('#reachHint').textContent();
   await page.locator('#fullRange').click();
@@ -33,6 +34,10 @@ test('a short miss explains its finish and retries the same lie and selected str
   await page.locator('#btnPutt').click();
   await expect(page.locator('#puttFeedback')).toBeVisible({timeout:15000});
   await expect(page.locator('#finishText')).toContainText('short');
+  await expect(page.locator('#feedbackDetails')).toBeHidden();
+  await page.locator('#feedbackToggle').click();
+  await expect(page.locator('#feedbackDetails')).toBeVisible();
+  await expect(page.locator('#feedbackToggle')).toHaveAttribute('aria-expanded','true');
   await expect(page.locator('#adjustmentText')).toContainText('On a replay: Try');
   await page.screenshot({path:info.outputPath('finish-feedback.png')});
   await page.locator('#retryLast').click();
@@ -40,7 +45,7 @@ test('a short miss explains its finish and retries the same lie and selected str
   await expect(page.locator('#powerValue')).toHaveText('2.0 ft');
   await page.locator('#btnPutt').click();await expect(page.locator('#puttFeedback')).toBeVisible({timeout:15000});
   await openSettings(page);await page.locator('#controlMode').selectOption('stroke');await page.locator('#panelToggle').click();
-  await page.locator('#fullRange').click();await page.locator('#retryLast').click();
+  await page.locator('#fullRange').click();await page.locator('#feedbackToggle').click();await page.locator('#retryLast').click();
   await expect(page.locator('#reachHint')).toContainText('Flat reach 2.0 ft');
   await expect(page.locator('#uiDist')).toHaveText(original);
 });
@@ -87,7 +92,7 @@ test('soft and firm comparison is available in Practice and does not block the p
   await page.goto('/');await page.locator('#startPractice').click();await page.locator('#stage canvas').press('n');await page.locator('#stage canvas').press('n');
   await openSettings(page);await page.getByText('Green speed & learning aids',{exact:true}).click();await page.locator('#optCompare').check();
   await expect(page.locator('#compareLegend')).toBeVisible({timeout:20000});await page.locator('#panelToggle').click();
-  await expect(page.locator('#btnPutt')).toBeEnabled();await page.screenshot({path:info.outputPath('pace-comparison.png')});
+  await expect(page.locator('#ballHandle')).toBeVisible();await page.screenshot({path:info.outputPath('pace-comparison.png')});
 });
 test('rotation cancels a pull and landscape quick actions stay clear of Settings',async({page},info)=>{
   await page.setViewportSize({width:390,height:844});await page.goto('/');await page.locator('#startPractice').click();
@@ -98,10 +103,11 @@ test('rotation cancels a pull and landscape quick actions stay clear of Settings
   await page.setViewportSize({width:740,height:360});await page.mouse.up();
   await expect(page.locator('#uiStrokes')).toHaveText('0');await expect(page.locator('#btnPutt')).toHaveText('Putt');
   const menu=await page.locator('#panelToggle').boundingBox();
-  for(const id of ['qbRead','qbPath','qbRetry']){
+  for(const id of ['qbRead']){
     const box=await page.locator('#'+id).boundingBox();
     expect(box.y).toBeGreaterThanOrEqual(menu.y+menu.height);
   }
+  await expect(page.locator('#qbPath')).toBeHidden();await expect(page.locator('#qbRetry')).toBeHidden();
   await expect(page.locator('#ballHandle')).toBeInViewport();await page.screenshot({path:info.outputPath('rotated-layout.png')});
 });
 test('dragging a stroke updates its flat reach and plays that distance on a flat green',async({page})=>{
