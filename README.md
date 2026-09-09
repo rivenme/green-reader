@@ -127,6 +127,6 @@ The course format has a version. Bump it when changing generated layouts or comp
 
 ## Release
 
-CI runs unit tests and the build on Linux, then runs each of the five browser profiles in its own macOS 26 job with one worker. It uploads a reviewable `preview-build` artifact and separate browser reports, including raw failure traces if a job is interrupted. The manually triggered Pages workflow publishes a chosen ref only after checks pass; choosing an older verified ref is the rollback path. Relative asset URLs support the existing `/green-reader/` GitHub Pages path.
+CI runs unit tests and the build on Linux, then runs each of the five browser profiles in its own macOS job with one worker. Chrome and Safari use macOS 26; Firefox uses the standard macOS 15 Intel runner to avoid stalls with the Apple virtual GPU. CI uploads a reviewable `preview-build` artifact and separate browser reports, including failure screenshots and traces from retries. The manually triggered Pages workflow publishes a chosen ref after its unit/build checks pass; choosing an older verified ref is the rollback path. Relative asset URLs support the existing `/green-reader/` GitHub Pages path.
 
 See [release and beta checklist](docs/RELEASE.md) and [verification results](docs/VERIFICATION.md). The repository includes the release tooling; publishing, live monitoring, and a human beta are separate release gates.

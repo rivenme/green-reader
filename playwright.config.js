@@ -7,8 +7,7 @@ export default defineConfig({
   use:{baseURL:'http://127.0.0.1:5173',trace:process.env.CI?'on-first-retry':'retain-on-failure',screenshot:'only-on-failure'},
   projects:[
     {name:'chromium',use:{...devices['Desktop Chrome']}},
-    // Exercise the macOS window compositor in CI; local runs remain headless.
-    {name:'firefox',use:{...devices['Desktop Firefox'],headless:!process.env.CI}},
+    {name:'firefox',use:{...devices['Desktop Firefox']}},
     {name:'webkit',use:{...devices['Desktop Safari']}},
     {name:'mobile-chrome',use:{...devices['Pixel 7']}},
     {name:'mobile-safari',use:{...devices['iPhone 13']}}

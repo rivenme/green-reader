@@ -26,8 +26,8 @@ jobs:
   browsers:
     name: Browser (${{ matrix.project }})
     needs: build
-    # Match the macOS graphics environment used to verify the WebGL/iPhone app.
-    runs-on: macos-26
+    # Firefox stalls with the Apple virtual GPU; use the standard Intel runner.
+    runs-on: ${{ matrix.runner || 'macos-26' }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -37,6 +37,7 @@ jobs:
             browser: chromium
           - project: firefox
             browser: firefox
+            runner: macos-15-intel
           - project: webkit
             browser: webkit
           - project: mobile-chrome
