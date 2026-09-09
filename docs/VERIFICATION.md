@@ -5,7 +5,7 @@ Results are recorded for each local release candidate. See the dated updates bel
 ## Automated scope
 
 - Unit tests: 50 deterministic layouts and pin neighborhoods, gradient math, fixed-step equivalence at 30/60/144 fps, forgiving/realistic cup capture without flag collisions, fringe recovery, Stimp/grain effects, stroke calibration and smoothing, pace/line assessments, simulated replay advice, drill scoring, native feedback bridge behavior, solver make execution, scoring, achievements, legacy save migration, invalid saves, unavailable storage, pointer ownership/cancellation.
-- Browser tests: boot, guided first putt, competition rules, practice navigation, reload/resume, corrupted storage recovery, final practice replay, modal keyboard focus, consistent stroke controls, displayed versus played distance, cancellation on rotation, three drills and saved results, same-lie replay, soft/firm route comparison, and optional realistic cups.
+- Browser tests: boot, guided first putt, competition rules, practice navigation, reload/resume, corrupted storage recovery, final practice replay, modal keyboard focus, saved Drag/Buttons choice, power-meter growth and retraction, automatic/manual camera framing after a miss, compact feedback, consistent stroke controls, displayed versus played distance, cancellation on rotation, three drills and saved results, same-lie replay, soft/firm route comparison, and optional realistic cups.
 - Browser profiles: Chromium, Firefox, WebKit, mobile Chrome emulation, mobile Safari emulation.
 - Production build: local dependency bundle, separate worker, relative asset base.
 
@@ -54,3 +54,16 @@ CI records traces on the first retry, following [Playwright's guidance](https://
 [The complete release check passed](https://github.com/rivenme/green-reader/actions/runs/34367878484) for code revision `504303d`: 40 unit tests, the production build, and all **136 browser checks**, with four intentional duplicate performance skips and no flaky-test results. Chromium passed 28 checks; Firefox, WebKit, mobile Chrome, and mobile Safari each passed 27. Firefox's Linux host rendered the diagnostic triangle at 38 fps with no OpenGL errors; this is a host diagnostic, not a gameplay performance benchmark. The full Firefox gameplay suite then passed in 1.6 minutes.
 
 The iPhone bundle and live-site checks described above contain the same gameplay implementation; subsequent changes affected only tests, CI, and documentation.
+
+## Control clarity update · 2026-09-09
+
+Revision `22fad11` restores a growing green strength bar and automatic framing after a stopped putt. Drag is the default input layout, with a meter beside the ball during the gesture and a hidden bottom button panel. Players can save a button-input preference from Home or Settings. Green readings and post-putt advice are compact by default.
+
+- **40 unit tests passed**, including persistence and validation of the new input, camera, and detail preferences alongside the existing active run.
+- **156 browser checks passed locally** across all five profiles with no retries. Four duplicate host-performance samples were intentionally skipped. The new cases cover visible meter growth and retraction, cancellation without a shot, saved input choice, and the rendered camera position with automatic framing enabled and disabled.
+- **[The release workflow passed](https://github.com/rivenme/green-reader/actions/runs/34399991882)** for revision `22fad11`, including the unit/build job and all five browser profiles.
+- **The production build and whitespace checks passed.** The main game is approximately 25.8 kB gzip; CSS is 5.1 kB gzip and HTML 6.4 kB gzip, alongside the existing Three.js and supporting chunks.
+- **The iPhone bundle was synced and the Xcode simulator build succeeded** with the iOS Simulator 26.5 SDK and signing disabled.
+- Desktop and phone screenshots were inspected for the growing bar, clear drag layout, button layout, and camera framing after a miss. The drag regression waits for the existing input smoothing to settle before comparing a repeated pull.
+
+This is a controls and presentation update; existing version-2 rounds remain resumable. Physical-device feel still requires playtesting on the phone.
