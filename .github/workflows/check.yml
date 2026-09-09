@@ -26,7 +26,7 @@ jobs:
   browsers:
     name: Browser (${{ matrix.project }})
     needs: build
-    # Firefox stalls with the Apple virtual GPU; use the standard Intel runner.
+    # Firefox uses Mesa/Xvfb; Safari retains the native macOS graphics stack.
     runs-on: ${{ matrix.runner || 'macos-26' }}
     timeout-minutes: 15
     strategy:
@@ -37,7 +37,7 @@ jobs:
             browser: chromium
           - project: firefox
             browser: firefox
-            runner: macos-15-intel
+            runner: ubuntu-24.04
           - project: webkit
             browser: webkit
           - project: mobile-chrome
@@ -52,7 +52,23 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - name: Install software OpenGL for Firefox
+        if: matrix.project == 'firefox'
+        run: sudo apt-get install -y xvfb libgl1-mesa-dri libegl-mesa0
+      - name: Check Firefox rendering host
+        if: matrix.project == 'firefox'
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          GALLIUM_DRIVER: llvmpipe
+        run: xvfb-run -a node scripts/browser-host.mjs
+      - name: Test Firefox with a virtual display
+        if: matrix.project == 'firefox'
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+          GALLIUM_DRIVER: llvmpipe
+        run: xvfb-run -a npm run test:e2e -- --project=firefox --headed
       - run: npm run test:e2e -- --project=${{ matrix.project }}
+        if: matrix.project != 'firefox'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
