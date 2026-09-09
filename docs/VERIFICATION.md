@@ -81,3 +81,9 @@ Revision `deaee16` reserves enough room for a full pull and maps cramped edge ge
 - Portrait, landscape, compact-screen, predicted-stop, and actual-stop screenshots were inspected. The compact meter remains beside the ball, and the landscape framing leaves room for a full pull.
 
 Ball dynamics and cup capture are unchanged; simulation now also reports total travel for the preview readout. Existing version-2 rounds remain resumable. Automated agreement demonstrates consistency with the game's physics, not calibration against measured golf putts or physical-device preference testing.
+
+### Published bundle check
+
+The live audit found Pages configured to publish the repository root from `main`, and the fetched page matched raw `index.html` rather than the production build. Pages was changed to `build_type: workflow`, following the [GitHub Pages publishing API](https://docs.github.com/en/rest/pages/pages#update-information-about-a-github-pages-site), and [the release was republished successfully](https://github.com/rivenme/green-reader/actions/runs/34408546704).
+
+The final live HTML matches the tested production HTML with SHA-256 `d10112cda383c2b950f341e966baccef6afeb4be6e0d3ed41956a0b72617cd30`. **Two live bundle checks passed**, in Chromium and mobile Safari emulation. They verify the bundled entry, full drag power within the viewport, the displayed terrain finish matching the played miss, button play, solver loading, and the pace drill, with no page or asset-loading errors.

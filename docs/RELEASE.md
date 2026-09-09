@@ -35,9 +35,9 @@ The app currently captures recent errors locally and offers a user-controlled JS
 ## Publish and rollback
 
 1. Merge the reviewed PR and choose a verified commit/tag. Retain the previous production ref.
-2. In GitHub repository Settings → Pages, select GitHub Actions as the build source. Configure the `github-pages` environment reviewers if desired.
+2. In GitHub repository Settings → Pages, select GitHub Actions as the build source. Confirm `gh api repos/rivenme/green-reader/pages --jq .build_type` returns `workflow`. A branch-based source publishes raw files and can replace the bundled release. Configure the `github-pages` environment reviewers if desired.
 3. Run **Publish GitHub Pages** with that ref. The workflow builds and tests before publishing.
-4. Smoke test the live URL: load, lesson, competition, reload/resume, settings, worker guide, error report. Confirm assets load from `/green-reader/`, including the worker.
+4. Smoke test the live URL: load, lesson, competition, reload/resume, settings, worker guide, error report. Confirm assets load from `/green-reader/assets/`, including the worker. The live HTML should reference a bundled entry in `assets/`, and match `dist/index.html` from the chosen release build.
 5. If the release breaks, run the same workflow with the previous verified ref. Avoid reverting user data. Old schemas may not resume new runs, so warn in release notes when changing course/save versions.
 
-No production publish or repository settings change has been performed by the local implementation work.
+GitHub Pages was confirmed and corrected to use `workflow` publishing on 2026-09-09. Live checks and release revisions are recorded in [verification results](VERIFICATION.md).
