@@ -4,7 +4,7 @@ import { GW, GH } from './constants.js';
 export function createScene(stage){
 const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.domElement.tabIndex=0;
-renderer.domElement.setAttribute('aria-label','Putting green. Arrow keys aim and set distance. Space putts. Escape cancels.');
+renderer.domElement.setAttribute('aria-label','Putting green. Arrow keys aim and set pace. Space putts. Escape cancels.');
 renderer.domElement.setAttribute('aria-describedby','keyboardHint');
 renderer.setPixelRatio(Math.min(2,window.devicePixelRatio));
 renderer.shadowMap.enabled=true;

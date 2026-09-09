@@ -22,8 +22,17 @@ export function distanceCalibration(stimp){
     const fraction=(target-distances[lo])/(distances[hi]-distances[lo]||1);
     return (lo+fraction)*MAXSPEED/samples;
   };
-  const calibration={maxDistance,speedForDistance};tables.set(stimp,calibration);return calibration;
+  const distanceForSpeed=speed=>{
+    const index=clamp(speed/MAXSPEED*samples,0,samples),lo=Math.floor(index),hi=Math.min(samples,lo+1);
+    return distances[lo]+(distances[hi]-distances[lo])*(index-lo);
+  };
+  const calibration={maxDistance,speedForDistance,distanceForSpeed};tables.set(stimp,calibration);return calibration;
 }
+export function strokeMaxSpeed(scale='standard'){
+  return scale==='long'?MAXSPEED:distanceCalibration(10).speedForDistance(scale==='precision'?10:60);
+}
+export function strokeSpeed(percent,scale='standard'){return clamp(percent,0,100)/100*strokeMaxSpeed(scale);}
+export function strokePercent(speed,scale='standard'){return clamp(speed/strokeMaxSpeed(scale)*100,0,100);}
 export function lieRange(cupDistance,maxDistance){
   return Math.floor(Math.min(maxDistance,Math.max(6,cupDistance*1.75+4))*10)/10;
 }
@@ -34,13 +43,19 @@ export function pullDistance(pull,maxPull,range,deadZone=6){
   return Math.round(range*Math.pow(fraction,1.5)*10)/10;
 }
 export function createDragGesture({x,y,maxPull,range,time=0}){
-  let smooth={x,y},lastTime=time,started=false;
-  return {move(nextX,nextY,nextTime){
-    const rawPull=Math.hypot(nextX-x,nextY-y);
-    if(rawPull<=6){smooth={x,y};started=false;lastTime=nextTime;return {...smooth,distance:0};}
-    const alpha=started?1-Math.exp(-clamp(nextTime-lastTime,1,100)/24):1;
-    smooth.x+=(nextX-smooth.x)*alpha;smooth.y+=(nextY-smooth.y)*alpha;
-    lastTime=nextTime;started=true;
+  let smooth={x,y},target={x,y},lastTime=time,started=false;
+  const sample=nextTime=>{
+    const alpha=1-Math.exp(-clamp(nextTime-lastTime,0,100)/24);
+    smooth.x+=(target.x-smooth.x)*alpha;smooth.y+=(target.y-smooth.y)*alpha;
+    lastTime=Math.max(lastTime,nextTime);
+    if(Math.hypot(target.x-smooth.x,target.y-smooth.y)<.1)smooth={...target};
     return {...smooth,distance:pullDistance(Math.hypot(smooth.x-x,smooth.y-y),maxPull,range)};
+  };
+  return {sample,move(nextX,nextY,nextTime){
+    const rawPull=Math.hypot(nextX-x,nextY-y);
+    target=rawPull<=6?{x,y}:{x:nextX,y:nextY};
+    if(rawPull<=6 || !started){smooth={...target};lastTime=nextTime;}
+    started=rawPull>6;
+    return sample(nextTime);
   }};
 }

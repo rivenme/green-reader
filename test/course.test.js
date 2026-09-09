@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {makeLevel} from '../src/course.js';
+import {makeLevel,pinIsPlayable} from '../src/course.js';
 import {elevOf,gradOf} from '../src/terrain.js';
 import {solveBestRoute} from '../src/solver.js';
 import {simulate} from '../src/physics.js';
@@ -9,6 +9,14 @@ test('all 50 layouts reproduce and stay inside the green',()=>{
     const a=makeLevel(n),b=makeLevel(n);assert.deepEqual(a,b);
     for(const p of [a.ball,a.hole]){assert.ok(p.x>.6&&p.x<59.4);assert.ok(p.y>.6&&p.y<39.4);}
     assert.ok(Math.hypot(gradOf(a,a.hole.x,a.hole.y).x,gradOf(a,a.hole.x,a.hole.y).y)<.05);
+  }
+});
+test('all pins support a stopping area and return putts at every supported speed',()=>{
+  for(let n=1;n<=50;n++){
+    const level=makeLevel(n);
+    for(const stimp of [7,10,14])assert.ok(pinIsPlayable(level,level.hole,stimp),`hole ${n}, Stimp ${stimp}`);
+    const replay=makeLevel(n,{hole:level.hole,ball:level.ball});
+    assert.deepEqual(replay,level);
   }
 });
 test('analytic gradient agrees with sampled elevation',()=>{

@@ -48,6 +48,7 @@
   </div>
 
   <div id="quickBtns">
+    <button id="qbRead" aria-label="Low view to read the green" title="Low read / putting view">⌕</button>
     <button id="qbPath" aria-label="Toggle predicted path" title="Predicted break path">➰</button>
     <button id="qbRetry" aria-label="Replay this hole" title="Replay this hole">↺</button>
   </div>
@@ -56,7 +57,7 @@
     <h2>📖 Green read</h2>
     <div class="row"><span>Distance</span><b id="uiDist">0 ft</b></div>
     <div class="row practiceRead"><span>Up / down</span><b id="uiElev">—</b></div>
-    <div class="row practiceRead"><span>Break if aimed straight</span><b id="uiBreakFt">—</b></div>
+    <div class="row practiceRead"><span>Straight at this pace</span><b id="uiBreakFt">—</b></div>
     <div class="row practiceRead"><span>Slope at hole</span><b id="uiSlopeHole">—</b></div>
     <div class="row practiceRead"><span>Grain</span><b id="uiGrain">—</b></div>
     <div class="row practiceRead"><span>Max break</span><b id="uiBreak">—</b></div>
@@ -91,6 +92,21 @@
       <div class="row"><span>Strokes (hole)</span><b id="uiStrokes">0</b></div>
       <div class="row"><span>Total vs Par</span><b id="uiTotal">E</b></div>
       <hr/>
+      <details id="controlSettings"><summary>Touch &amp; cup</summary>
+        <label for="controlMode">Putt control</label><select id="controlMode"><option value="stroke">Stroke · consistent touch</option><option value="distance">Distance · feet assist</option><option value="adaptive">Adaptive distance · original feel</option></select>
+        <label for="strokeScale">Stroke range</label><select id="strokeScale"><option value="standard">Standard</option><option value="precision">Short putts · precision</option><option value="long">Long putts · full stroke</option></select>
+        <p class="legend">Stroke keeps the same strength between holes. Distance assists select flat-ground feet. Adaptive distance changes sensitivity with each lie.</p>
+        <label for="cupMode">Cup behavior</label><select id="cupMode"><option value="forgiving">Forgiving · every crossing drops</option><option value="realistic">Realistic · pace and entry matter</option></select>
+        <p class="legend">The flag is decorative in both modes. Competition uses the forgiving cup.</p>
+      </details>
+      <details id="drillSettings"><summary>Practice drills</summary>
+        <label for="drillSlope">Drill green</label><select id="drillSlope"><option value="flat">Flat · learn the stroke</option><option value="gentle">Gentle break</option><option value="mixed">Break and elevation</option></select>
+        <button id="startPaceDrill">Pace ladder · 10 / 20 / 30 ft</button>
+        <button id="startCircleDrill">Short-putt circle · 3 ft</button>
+        <button id="startGateDrill">Starting-line gate</button>
+        <p class="legend">Repeatable shots, stroke error off. Target zones reward touch.</p>
+        <p id="drillStats" class="legend"></p>
+      </details>
       <details><summary>Green speed &amp; learning aids</summary>
       <h2>Green speed</h2>
       <div class="row"><span>Stimp</span><b id="uiStimp">10.0</b></div>
@@ -103,6 +119,8 @@
       <label class="toggle"><input type="checkbox" id="optSlope" checked> Break flow dots</label>
       <label class="toggle"><input type="checkbox" id="optPath"> Predicted path & expected finish</label>
       <label class="toggle"><input type="checkbox" id="optBest"> Best line to hole</label>
+      <label class="toggle"><input type="checkbox" id="optPace" checked> Pace &amp; starting-line feedback</label>
+      <label class="toggle"><input type="checkbox" id="optCompare"> Compare soft &amp; firm routes</label>
       <label class="toggle"><input type="checkbox" id="optGrid" checked> Grid &amp; contour lines</label>
       <div class="legend">
         <i style="background:#b94646"></i>high ground&nbsp;&nbsp;
@@ -117,6 +135,7 @@
       </details>
       <div id="guideStatus" role="status" class="legend"></div>
       <label class="toggle"><input type="checkbox" id="optSnd" checked> Sound</label>
+      <label class="toggle"><input type="checkbox" id="optHaptics" checked> iPhone strike &amp; cup haptics</label>
       <label class="toggle"><input type="checkbox" id="optMotion"> Reduce motion</label>
       <label for="quality">Graphics quality</label><select id="quality"><option value="auto">Balanced</option><option value="low">Low · battery saver</option><option value="high">High</option></select>
       <hr/>
@@ -139,12 +158,17 @@
 
 <section id="lesson" hidden aria-label="First putt lesson"><strong id="lessonTitle"></strong><p id="lessonText"></p><div class="lessonActions"><button id="lessonRetry">Retry lesson</button><button id="lessonSkip">Exit lesson</button></div></section>
 <section id="shotControls" aria-label="Putt controls">
-  <div class="shotHead"><span id="aimValue">At cup</span><span>Aim for <b id="powerValue">8.0 ft</b></span></div>
+  <div class="shotHead"><span id="aimValue">At cup</span><span><span id="powerCaption">Stroke</span> <b id="powerValue">40%</b></span></div>
   <div class="shotRow"><button id="aimLeft" aria-label="Aim left">←</button><button id="aimRight" aria-label="Aim right">→</button><input id="shotPower" aria-label="Putt distance" aria-describedby="reachHint" type="range" min="0.2" max="18" step="0.1" value="8"><button id="btnPutt" class="primary">Putt</button></div>
   <div class="reachRow"><span id="reachHint">Flat-ground reach · slopes change the finish</span><button id="fullRange" aria-pressed="false">Extend range</button></div>
-  <p id="keyboardHint">Drag back, then release. <span class="keyboardOnly">← → aim · ↑ ↓ distance · Space putts</span></p>
+  <div id="paceFeedback" hidden><b id="paceLabel"></b><span id="lineLabel"></span></div>
+  <p id="compareLegend" hidden><span>● Soft</span> <span>● Firm</span> · possible lines, not your selected shot</p>
+  <p id="keyboardHint">Drag back, then release. <span class="keyboardOnly">← → aim · ↑ ↓ pace · Space putts</span></p>
 </section>
+<section id="puttFeedback" hidden aria-label="Last putt feedback"><b id="finishText"></b><p id="adjustmentText"></p><button id="retryLast">Try the same putt</button></section>
+<section id="drillPanel" hidden aria-label="Practice drill"><div class="drillHeading"><b id="drillTitle"></b><button id="exitDrill" aria-label="Leave drill">×</button></div><p id="drillInstruction"></p><p id="drillResult" role="status"></p><div class="drillActions"><button id="drillAgain" hidden>Try again</button><button id="drillNext" class="primary" hidden>Next putt</button></div></section>
 <span id="finishMarkerLabel" hidden>Expected finish</span>
+<span id="ballHandle" aria-hidden="true" hidden></span>
 <p id="saveStatus" role="status" class="saveNotice"></p>
 </main>
   <div id="badges" class="overlay hidden" role="dialog" aria-modal="true" aria-label="Achievement badges"><div class="ovcard">
@@ -168,12 +192,16 @@
   </div>
 </div>
 <div id="result" class="overlay hidden" role="dialog" aria-modal="true" aria-label="Hole result" data-dismissible="false"><div class="ovcard"><div id="msgText"></div><button id="continueHole" class="primary">Continue to next hole</button><button id="replayResult">Replay this hole</button><button id="finishLesson" class="primary" hidden>Explore practice</button><button id="restartResult">Choose a mode / new run</button></div></div>
+<div id="drillSummary" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="drillSummaryTitle" data-dismissible="false"><div class="ovcard"><h2 id="drillSummaryTitle">Practice complete</h2><p id="drillSummaryText"></p><button id="drillRestart" class="primary">Practice again</button><button id="drillSummaryExit">Back to the green</button></div></div>
 <div id="graphicsLost" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="graphicsTitle" data-dismissible="false"><div class="ovcard"><h2 id="graphicsTitle">Graphics paused</h2><p>The browser interrupted the 3D view. Your current progress has been checkpointed. Reload to rebuild the green.</p><button id="graphicsReload">Reload green</button></div></div>
 <div id="help" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle"><div class="ovcard helpCard"><h2 id="helpTitle">A little help with your read</h2>
   <p><b>Direction:</b> drag back from the ball, away from where you want it to go. Release to putt. Or use the aim buttons and Putt.</p>
-  <p><b>Distance:</b> drag back or set “Aim for” in feet. The bar shows how far the ball would roll on flat ground at this green speed. Uphill usually stops shorter; downhill rolls farther. Small pulls give finer control. Use Extend range for longer shots.</p>
+  <p><b>Stroke:</b> the same pull produces the same strength between holes. Faster greens roll farther. Choose Short putts in Touch &amp; cup for precision, or use Distance for an exact-feet assist. Adaptive distance restores the original sensitivity that changes with the lie.</p>
+  <p><b>Pace:</b> the neutral bar shows strength. Practice labels use a simulated roll without the cup: Good pace means finishing from 4 inches short to 18 inches past the cup line, with a controlled arrival. It is a game target, not a guarantee of a make. Starting line is assessed separately. A large sideways miss says Check starting line. No prediction means no claimed finish.</p>
   <p><b>Break:</b> dots move downhill. Aim uphill and let the slope curve your putt. In Practice, enable Predicted path &amp; expected finish to see the simulated stopping point. With stroke error enabled, the preview is before random error.</p>
   <p><b>Camera:</b> drag away from the ball to orbit, pinch or scroll to zoom. C returns behind the ball; V gives a low view.</p>
+  <p><b>Practice:</b> try the pace ladder, short-putt circle, and starting-line gate in Settings. After a miss, replay the same putt with its previous path. Soft/firm comparison shows two possible routes, not a prediction of your selected stroke.</p>
+  <p><b>Cup &amp; fringe:</b> forgiving cups accept every crossing; optional realistic cups let overly fast or shallow crossings roll over. Neither mode collides with the flag. The visible fringe slows the ball. At its outer edge, the ball stops for your next stroke without an extra penalty.</p>
   <p><b>Keyboard:</b> focus the green. Left/right aim; up/down adjust distance by 0.1 ft. Space putts, Escape cancels. R retries and N skips in practice. H opens settings.</p>
   <p><b>Competition:</b> fixed layouts, Stimp 10, grain on, stroke error off. No retries, skipping, or predicted/best lines. Scores are local to this browser.</p>
   <p class="finePrint">This is a stylized simulation with exaggerated elevation and simplified cup behavior. Benchmark stats are illustrative, not validated coaching or PGA Tour measurements. No accounts, ads, or automatic tracking. Progress is stored in this browser; clearing site data removes it.</p>

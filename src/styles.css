@@ -331,3 +331,46 @@ body.tutorialMode #readCard{display:none;}
 #quickBtns,.nativeApp #quickBtns{bottom:calc(env(safe-area-inset-bottom) + var(--putt-controls-height,180px) + 24px);}
 #panel,.nativeApp #panel{bottom:calc(env(safe-area-inset-bottom) + var(--putt-controls-height,180px) + 24px);max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--putt-controls-height,180px) - 100px);}
 .saveNotice,.nativeApp .saveNotice{bottom:calc(env(safe-area-inset-bottom) + var(--putt-controls-height,180px) + 24px);}
+
+/* Read, commit, then watch the roll without moving the camera or hiding the ball. */
+#shotPower{accent-color:#d5e4da;}
+#ballHandle{position:fixed;z-index:8;width:32px;height:32px;border:1px solid #e1eee580;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;}
+body.aiming #ballHandle{border-color:#e1eee5;}
+#paceFeedback{display:flex;align-items:center;justify-content:space-between;gap:12px;border-top:1px solid #ffffff18;padding-top:7px;font-size:11px;}
+#paceLabel{color:#d5e4da;white-space:nowrap;}
+#lineLabel{color:var(--muted);text-align:right;}
+#paceFeedback[data-pace=good] #paceLabel{color:#7ee081;}
+#paceFeedback[data-pace=short] #paceLabel{color:#8cd4fa;}
+#paceFeedback[data-pace=long] #paceLabel,#paceFeedback[data-pace=firm] #paceLabel{color:#ffb084;}
+#compareLegend{font-size:10px;line-height:1.5;color:var(--muted);margin:7px 0 0;}
+#compareLegend span:first-child{color:#8cd4fa;}
+#compareLegend span:nth-child(2){color:#ffc075;}
+#puttFeedback{position:fixed;left:50%;bottom:calc(env(safe-area-inset-bottom) + var(--putt-controls-height,200px) + 26px);transform:translateX(-50%);width:min(440px,calc(100vw - 110px));padding:10px 14px;border:1px solid #ffffff20;border-radius:14px;background:#18211af2;z-index:11;font-size:12px;}
+#puttFeedback p{font-size:11px;line-height:1.5;color:var(--muted);margin:6px 0;}
+#puttFeedback button{font-size:12px;margin:0;}
+#drillPanel{position:fixed;top:76px;left:16px;width:300px;background:#18211af2;border:1px solid #8cd4fa66;border-radius:14px;z-index:11;padding:10px 12px;}
+.drillHeading{display:flex;justify-content:space-between;align-items:center;font-size:13px;}
+.drillHeading button{width:44px;flex-shrink:0;margin:0;background:transparent;border:0;font-size:24px;}
+#drillPanel p{font-size:12px;line-height:1.5;margin:4px 0;color:var(--muted);}
+.drillActions{display:flex;gap:8px;}
+.drillActions button{font-size:12px;}
+body.drillMode #readCard,body.drillMode #lesson{display:none;}
+body.aiming #readCard,body.aiming #drillPanel{opacity:.45;pointer-events:none;}
+body.aiming #readCard .legend,body.rolling #readCard .legend{display:none;}
+body.rolling #readCard .practiceRead,body.rolling #shotControls .reachRow,body.rolling #keyboardHint{display:none;}
+body.rolling #quickBtns{visibility:hidden;}
+body.rolling #shotControls{opacity:.7;}
+#controlSettings label:not(.toggle),#drillSettings label:not(.toggle){display:block;font-size:12px;margin-top:10px;}
+@media(max-width:759px){
+  #drillPanel{top:70px;left:12px;width:calc(100vw - 24px);}
+  #puttFeedback{left:12px;transform:none;}
+}
+.nativeApp #drillPanel{top:calc(env(safe-area-inset-top) + 64px);left:calc(env(safe-area-inset-left) + 12px);width:min(420px,calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 24px));}
+@media(max-height:500px){
+  #quickBtns,.nativeApp #quickBtns{flex-direction:row;bottom:auto;top:calc(env(safe-area-inset-top) + 70px);right:16px;gap:8px;}
+  #drillPanel,.nativeApp #drillPanel{width:255px;font-size:11px;top:64px;}
+  #drillPanel p{font-size:11px;}
+  #puttFeedback{left:12px;transform:none;width:255px;bottom:max(10px,env(safe-area-inset-bottom));}
+  #shotControls{width:min(350px,calc(100vw - 300px));}
+  #paceFeedback{font-size:10px;gap:6px;}
+}

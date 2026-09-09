@@ -14,6 +14,8 @@ test('practice preview shows an endpoint, disappears for the shot, and stays off
   await page.locator('#panelToggle').click();
   await page.getByText('Green speed & learning aids',{exact:true}).click();
   await page.locator('#optPath').check();await page.locator('#panelToggle').click();
+  await page.locator('#panelToggle').click();await page.getByText('Touch & cup',{exact:true}).click();
+  await page.locator('#controlMode').selectOption('distance');await page.locator('#panelToggle').click();
   await page.locator('#shotPower').fill('5');
   await expect(page.locator('#finishMarkerLabel')).toBeVisible();
   await page.screenshot({path:info.outputPath('distance-preview.png')});
@@ -28,13 +30,14 @@ test('practice preview shows an endpoint, disappears for the shot, and stays off
 
 test('tap on the ball does not shoot; drag commits exactly the displayed distance',async({page})=>{
   await page.goto('/');await page.locator('#startLesson').click();
-  const {width,height}=page.viewportSize();const x=width/2,y=height*.56;
+  await expect(page.locator('#ballHandle')).toBeVisible();
+  const box=await page.locator('#ballHandle').boundingBox(),x=box.x+box.width/2,y=box.y+box.height/2;
   await page.mouse.move(x,y);await page.mouse.down();
   await expect(page.locator('#btnPutt')).toHaveText('Release to putt');
   await page.mouse.move(x+2,y+2);await page.mouse.up();
   await expect(page.locator('#uiStrokes')).toHaveText('0');
   await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x,y+70,{steps:8});
-  await expect(page.locator('#powerValue')).not.toHaveText('0.0 ft');
+  await expect(page.locator('#powerValue')).toHaveText('3.4 ft');
   const distance=parseFloat(await page.locator('#powerValue').textContent());
   expect(distance).toBeGreaterThan(.2);
   await page.mouse.up();await expect(page.locator('#uiStrokes')).toHaveText('1');

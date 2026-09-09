@@ -64,9 +64,10 @@ test('layout captures keep required controls inside viewport',async({page},info)
 
 test('drag restart cancels the stroke and releases pointer ownership',async({page})=>{
   await page.goto('/');await page.locator('#startLesson').click();
-  const {width,height}=page.viewportSize();
-  await page.mouse.move(width/2,height*.56);await page.mouse.down();
-  await page.mouse.move(width/2,height*.56+30,{steps:5});
+  await expect(page.locator('#ballHandle')).toBeVisible();
+  const box=await page.locator('#ballHandle').boundingBox(),x=box.x+box.width/2,y=box.y+box.height/2;
+  await page.mouse.move(x,y);await page.mouse.down();
+  await page.mouse.move(x,y+30,{steps:5});
   await expect(page.locator('#btnPutt')).toHaveText('Release to putt');
   await page.keyboard.press('r');await page.mouse.up();
   await expect(page.locator('#btnPutt')).toHaveText('Putt');await expect(page.locator('#uiStrokes')).toHaveText('0');

@@ -19,8 +19,26 @@ test('cup intersection is accepted without flag or lip bounce',()=>{
   assert.equal(rollStep(b,l),'holed');assert.equal(b.moving,false);assert.equal(b.x,20);assert.equal(b.y,10);
   assert.notEqual(rollStep(b,l),'holed');
 });
-test('boundary reflects only the crossed axis',()=>{
-  const b=launch(.61,20,-6,2);rollStep(b,flat);assert.ok(b.vx>0);assert.ok(b.vy>0);assert.equal(b.x,.6);
+test('outer fringe stops the ball for recovery without a reflecting wall',()=>{
+  const b=launch(.61,20,-6,2);assert.equal(rollStep(b,flat),'stopped');
+  assert.equal(b.vx,0);assert.equal(b.vy,0);assert.equal(b.x,.6);assert.equal(b.recovered,true);
+});
+test('fringe slows roll before the outer edge',()=>{
+  const rough=simulate(flat,{x:1,y:10,vx:0,vy:6},{ignoreCup:true});
+  const green=simulate(flat,{x:10,y:10,vx:0,vy:6},{ignoreCup:true});
+  assert.ok(rough.ball.y<green.ball.y);assert.equal(rough.ball.recovered,false);
+});
+test('realistic cup accepts soft centers but lets hot and shallow entries roll over',()=>{
+  const l={...flat,hole:{x:20,y:10}},options={cupMode:'realistic'};
+  assert.equal(rollStep(launch(19.99,10,2,0),l,options),'holed');
+  const hot=launch(19.99,10,12,0);assert.equal(rollStep(hot,l,options),'moving');assert.ok(hot.vx>0);
+  const shallow=launch(19.99,10.34,3,0);assert.equal(rollStep(shallow,l,options),'moving');assert.ok(shallow.vx>0);
+});
+test('a ghost target never captures and friction never reverses a flat putt',()=>{
+  const l={...flat,hole:{x:20,y:10},cupActive:false};
+  assert.notEqual(rollStep(launch(19.99,10,2,0),l),'holed');
+  const b=launch(10,10,.015,0);for(let i=0;i<20;i++){rollStep(b,flat);assert.ok(b.vx>=0);}
+  assert.equal(b.moving,false);
 });
 test('prediction and fixed-step playback end at exactly the same position',()=>{
   const start={x:10,y:10,vx:8,vy:2};const predicted=simulate(flat,start);

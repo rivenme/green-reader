@@ -20,13 +20,14 @@ function streakMultiplier(streak){ return Math.min(3.0, 1 + 0.2*streak); }
 // par-or-better continues the streak; over par resets it.
 function nextStreak(streak, strokes, par){ return strokes <= par ? streak+1 : 0; }
 // Points for one hole. `streak` is the post-update streak count this hole earns.
-function holeScore({distFt, diff, stimp, strokes, par, streak}){
+function holeScore({distFt, diff, stimp, strokes, par, streak,firstLeave=null}){
   const tier = resultTier(strokes, par);
   const base = distFt * 12;
   const difficulty = (0.7 + 0.3*diff) * (stimp/10);   // green-speed-weighted hole difficulty
   const isBomb = (tier === 'onePutt' && distFt > 25);
   const pts = base * difficulty * STROKE_MULT[tier] * streakMultiplier(streak) * (isBomb?1.5:1.0);
-  return { tier, bomb:isBomb, points: Math.round(pts) };
+  const lagBonus=distFt>=10 && strokes===2 && firstLeave!==null && firstLeave<=2?50:0;
+  return { tier, bomb:isBomb, points: Math.round(pts)+lagBonus,lagBonus };
 }
 // === END SCORING ENGINE =====================================================
 

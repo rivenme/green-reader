@@ -1,8 +1,25 @@
 import { elevOf, gradOf } from './terrain.js';
-import { launch, rollStep } from './physics.js';
+import { launch, rollStep, simulate, effectiveGradient, frictionDecel } from './physics.js';
 import { GW, GH, MAXSPEED, G } from './constants.js';
 function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
+
+export function pinIsPlayable(field,hole,stimp=14){
+  // Test the whole return-putt area, including grain, at the fastest supported
+  // green speed. Reserve resistance headroom for a controllable return putt.
+  for(let dx=-2.5;dx<=2.5;dx+=1.25)for(let dy=-2.5;dy<=2.5;dy+=1.25){
+    const g=effectiveGradient(field,hole.x+dx,hole.y+dy,true);
+    if(G*Math.hypot(g.x,g.y)>frictionDecel(stimp)*.65)return false;
+  }
+  const l={...field,hole,holeR:.35};
+  for(let i=0;i<8;i++){
+    const a=i*Math.PI/4,dx=Math.cos(a),dy=Math.sin(a);
+    const r=simulate(l,{x:hole.x+dx*2.5,y:hole.y+dy*2.5,vx:-dx*2.2,vy:-dy*2.2},
+      {stimp,grain:true,ignoreCup:true},false);
+    if(r.ball.moving || r.ball.recovered || dist(r.ball,hole)>4)return false;
+  }
+  return true;
+}
 
 function makeLevel(n, fixed){
   const rnd = mulberry32(0x9e37 + n*2654435761 >>> 0);
@@ -12,14 +29,14 @@ function makeLevel(n, fixed){
 
   // Real greens: mostly 1-3% slope, 4-5% only in small areas. Tilt caps ~3%
   // so even a long uphill putt is comfortably reachable at full power.
-  const tiltMag = R(0.008, 0.014) + diff*0.016;
+  const tiltMag = n===1?0:R(0.004, 0.01) + diff*0.016;
   const tiltDir = R(0, Math.PI*2);
   const baseGrad = { x: Math.cos(tiltDir)*tiltMag, y: Math.sin(tiltDir)*tiltMag };
 
   // Broad, gentle undulations (max local slope ≈ 0.6·amp/sig stays under ~5%).
   // Hollows are shallower than mounds — greens are built to drain, deep bowls
   // collect water and don't exist on real courses.
-  const nBumps = 3 + Math.round(diff*5) + Math.round(R(0,2));
+  const nBumps = n<=2?0:3 + Math.round(diff*5) + Math.round(R(0,2));
   const bumps=[];
   for(let i=0;i<nBumps;i++){
     const hollow = rnd()<0.45;
@@ -49,39 +66,22 @@ function makeLevel(n, fixed){
   // Grass grain: the nap direction. Down-grain rolls faster, into it slower,
   // across it the ball drifts — modelled as a constant micro-slope.
   const ga=R(0,6.28);
-  const grain={hx:Math.cos(ga), hy:Math.sin(ga), mag:R(0.002,0.004)+diff*0.002};
+  const grain=n<10?null:{hx:Math.cos(ga), hy:Math.sin(ga), mag:R(0.001,0.002)+diff*0.001};
 
   // Seed terrain, pin and lie together for reproducible challenges.
   const RR = R;
-  const Ltmp={baseGrad, bumps, feats};
+  const Ltmp={baseGrad, bumps, feats,grain};
 
-  // Ensure a pinnable flat area exists; if the green is too tilted overall,
-  // gentle it (deterministic, so the level's look stays stable across reloads).
-  const flatExists=()=>{
-    for(let x=GW*0.18;x<=GW*0.82;x+=2.5)
-      for(let y=4;y<=16;y+=2.5){
-        const gh=gradOf(Ltmp,x,y);
-        if(Math.hypot(gh.x,gh.y)<0.035) return true;
-      }
-    return false;
-  };
-  for(let a=0;a<5 && !flatExists();a++){ baseGrad.x*=0.8; baseGrad.y*=0.8; }
-
-  // Practice replay can explicitly reuse the same pin and lie.
-  if(fixed){
-    const par = dist(fixed.ball, fixed.hole) > 24 ? 3 : 2;
-    return { n, baseGrad, bumps, feats, grain, hole:fixed.hole, ball:fixed.ball, par, holeR: 0.35, diff };
+  const pins=Array.from({length:80},()=>({x:RR(GW*.18,GW*.82),y:RR(6,16)}));
+  let hole;
+  for(let pass=0;pass<12 && !hole;pass++){
+    hole=pins.find(p=>pinIsPlayable(Ltmp,p));
+    if(!hole){
+      baseGrad.x*=.75;baseGrad.y*=.75;
+      bumps.forEach(b=>b.amp*=.75);feats.forEach(f=>f.amp*=.75);
+    }
   }
-
-  // Seeded pin on flatter ground.
-  let hole={x:GW/2, y:9}, bestSl=1e9;
-  for(let i=0;i<240;i++){
-    const c={ x:RR(GW*0.18, GW*0.82), y:RR(4, 16) };
-    const gh=gradOf(Ltmp, c.x, c.y);
-    const sl=Math.hypot(gh.x,gh.y);
-    if(sl<0.03){ hole=c; break; }
-    if(sl<bestSl){ bestSl=sl; hole=c; }
-  }
+  if(!hole){baseGrad.x=baseGrad.y=0;bumps.length=feats.length=0;hole=pins[0];}
 
   // Screen candidate lies with the shared roll at Stimp 7 and 85% power.
   function rollReaches(p, ang){
@@ -102,10 +102,10 @@ function makeLevel(n, fixed){
     return false;
   };
   // Pick a seeded candidate that passes the bounded reachability search.
-  const minDist = 8 + diff*14;
+  const minDist = n<=2?3:8 + diff*14;
   let cands=[];
   for(let i=0;i<400 && cands.length<4;i++){
-    const p={ x:RR(GW*0.14, GW*0.86), y:RR(GH*0.42, GH-4) };
+    const p=n<=2?{x:hole.x,y:hole.y+(n===1?5:8)}:{ x:RR(GW*0.14, GW*0.86), y:RR(GH*0.42, GH-4) };
     const d=dist(p,hole);
     if(d>=minDist && d<=40 && reachable(p)) cands.push(p);
   }
@@ -118,7 +118,8 @@ function makeLevel(n, fixed){
   const ballPos = cands.length
     ? cands[Math.floor(pick*cands.length)]
     : { x:hole.x, y:Math.min(GH-5, hole.y+10) };
-  const par = dist(ballPos,hole) > 24 ? 3 : 2;
+  if(fixed){hole={...fixed.hole};Object.assign(ballPos,fixed.ball);}
+  const par = 2;
   return { n, baseGrad, bumps, feats, grain, hole, ball: ballPos, par, holeR: 0.35, diff };
 }
 

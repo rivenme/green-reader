@@ -1,18 +1,19 @@
 import { MAXSPEED } from './constants.js';
 import { dist } from './course.js';
-import { simulate, frictionDecel } from './physics.js';
+import { simulate } from './physics.js';
+import { distanceCalibration } from './aiming.js';
 export function solveBestRoute(level, ball, options={}){
   const hole=level.hole;
   const d0=dist(ball,hole);
   if(d0<0.6) return null;
-  const mu=frictionDecel(options.stimp ?? 10);
   const baseAng=Math.atan2(hole.y-ball.y, hole.x-ball.x);
-  const vFlat=Math.sqrt(2*mu*d0);
+  const vFlat=distanceCalibration(options.stimp ?? 10).speedForDistance(d0+.5);
+  const targetSpeed=options.arrivalPace==='firm'?3:1.2;
   let best=null;
   const consider=(ang,v,h)=>{
     const r=simulate(level,{x:ball.x,y:ball.y,vx:Math.cos(ang)*v,vy:Math.sin(ang)*v},options,false);
     // misses prefer slow near-misses — their neighbourhood holds the makes
-    const score = r.holed ? Math.abs(r.arrSp-1.5) : 100+r.minD+0.04*r.spAtMin;
+    const score = r.holed ? Math.abs(r.arrSp-targetSpeed) : 100+r.minD+0.04*r.spAtMin;
     if(!best || score<best.score) best={score,ang,v};
     return score;
   };
@@ -66,4 +67,3 @@ export function solveBestRoute(level, ball, options={}){
   const r=simulate(level,{x:ball.x,y:ball.y,vx:Math.cos(best.ang)*best.v,vy:Math.sin(best.ang)*best.v},options,true);
   return {pts:r.pts, holed:r.holed, angle:best.ang, speed:best.v};
 }
-

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {distanceCalibration,flatRollDistance,lieRange,pullDistance,createDragGesture} from '../src/aiming.js';
+import {distanceCalibration,flatRollDistance,lieRange,pullDistance,createDragGesture,strokeSpeed,strokePercent} from '../src/aiming.js';
 import {MAXSPEED} from '../src/constants.js';
 
 test('chosen distances match the full skid and roll simulation on every green speed',()=>{
@@ -15,6 +15,12 @@ test('chosen distances match the full skid and roll simulation on every green sp
     assert.equal(calibration.speedForDistance(0),0);
     assert.equal(distanceCalibration(stimp),calibration);
   }
+});
+test('changing stroke range can preserve launch speed while faster greens roll farther',()=>{
+  const percentage=pullDistance(100,185,100),speed=strokeSpeed(percentage);
+  assert.ok(flatRollDistance(speed,14)>flatRollDistance(speed,7));
+  assert.ok(strokeSpeed(percentage,'precision')<speed);
+  assert.ok(Math.abs(strokeSpeed(strokePercent(speed,'long'),'long')-speed)<1e-12);
 });
 test('tap-ins have a small range; longer lies retain distance headroom',()=>{
   assert.equal(lieRange(1,90),6);
@@ -38,4 +44,14 @@ test('gesture smoothing rejects sudden finger jitter and keeps its initial range
   assert.ok(jitter.x<205);
   assert.ok(Math.abs(jitter.distance-first.distance)<1);
   assert.equal(gesture.move(200,200,200).distance,0);
+});
+test('a held pull settles to the finger even when move events arrive together',()=>{
+  const gesture=createDragGesture({x:200,y:200,maxPull:185,range:100,time:0});
+  gesture.move(200,210,10);
+  gesture.move(200,255,11);
+  for(let t=16;t<=256;t+=16)gesture.sample(t);
+  assert.equal(gesture.sample(272).distance,pullDistance(55,185,100));
+  assert.equal(gesture.sample(300).y,255);
+  gesture.move(202,201,320);
+  assert.equal(gesture.sample(400).distance,0);
 });

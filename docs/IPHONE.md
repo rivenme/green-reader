@@ -3,8 +3,9 @@
 The iPhone app packages the existing Three.js game using Capacitor 8.5.1 and
 WKWebView. It includes the green, physics, course generator, solver worker,
 styles, and audio locally. Gameplay does not load GitHub Pages or a CDN.
-The flag remains decorative, crossing the cup completes the hole, and there
-is no continuous rolling sound.
+The flag remains decorative. The default forgiving cup accepts every crossing;
+Practice also offers a realistic cup option. Rolling is silent. Optional strike
+and cup feedback uses the native Capacitor Haptics plugin.
 
 ## Open and run
 
@@ -44,6 +45,10 @@ Connect record, archive signing, and upload through Xcode.
   WebView behavior. There is no remote development-server URL.
 - `vite.config.js` strips the browser-only import map from the iOS build.
 - Native-only CSS accounts for the notch, home indicator, and landscape edges.
+- Settings → Touch & cup offers consistent stroke controls, a feet assist, and
+  the original adaptive distance control. Practice drills are in Settings.
+- The haptics plugin is included through Swift Package Manager after sync.
+  Haptics require a physical iPhone; the simulator can verify the build and UI.
 - Progress and settings are local to this app. Browser saves do not transfer
   automatically, and deleting the app can remove its saves.
 - `swift scripts/ios-icon.swift` regenerates the original opaque 1024px icon.

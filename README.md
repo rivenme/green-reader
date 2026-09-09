@@ -32,8 +32,8 @@ Its progress is stored separately from the browser version.
 ## Play
 
 - **First putt:** a short interactive lesson on a flat eight-foot green. Drag and release, or set the distance to 8 ft and press Putt.
-- **Practice:** free retries, skipping, adjustable Stimp 7–14, predicted paths, and an optional best-line search. Change physics settings between putts.
-- **Competition:** 50 reproducible layouts, Stimp 10, grain enabled, random stroke error disabled. No retries, skipping, predicted paths, or best-line guides. Flow dots and the contour grid remain available. Each completed hole banks local XP and points; complete all 50 for a run result.
+- **Practice:** free retries, adjustable Stimp 7–14, predicted finishes, pace/line feedback, and soft/firm route comparisons. Try the pace ladder, three-foot circle, or starting-line gate in Settings → Practice drills. Drill results are saved separately; leaving a drill returns to your round.
+- **Competition:** 50 reproducible two-putt challenges, Stimp 10, forgiving cup, grain enabled where present, random stroke error disabled. No retries, skipping, or predicted pace/path/line assistance. Flow dots and the contour grid remain available. A good first leave followed by a two-putt earns a touch bonus; complete all 50 for a run result.
 
 Hole results wait for you to continue. The home screen offers **Resume** or a new mode. Starting a new mode replaces the active run while retaining lifetime progress. The lesson does not replace a saved run.
 
@@ -44,9 +44,9 @@ Hole results wait for you to continue. The home screen offers **Resume** or a ne
 | Drag back from the ball, release | Aim and putt |
 | Drag away from the ball | Orbit camera |
 | Scroll / pinch | Zoom |
-| Aim buttons + distance slider + Putt | Complete touch/keyboard alternative |
+| Aim buttons + stroke/distance slider + Putt | Complete touch/keyboard alternative |
 | Left / right arrows | Aim in 0.5° steps |
-| Up / down arrows | Adjust flat-ground reach by 0.1 ft |
+| Up / down arrows | Adjust strength by 1%, or assisted distance by 0.1 ft |
 | Space (green focused) | Putt |
 | Escape | Cancel aim / close dismissible dialog |
 | R / N | Replay / skip in Practice |
@@ -57,24 +57,45 @@ Hole results wait for you to continue. The home screen offers **Resume** or a ne
 
 Shortcuts do not override focused form controls. Dialogs contain keyboard focus and restore it when closed. System reduced-motion preferences are respected, with an additional app setting. Graphics quality can be lowered to reduce rendering cost.
 
-The reach bar ends at the selected **flat-ground distance**. Launch speed is
-calibrated against the same skid, friction, and stop simulation used by play,
-at the current Stimp, with no slope, grain, cup, or boundaries in the reference.
-Actual terrain can shorten, lengthen, or curve the shot. Practice's optional
-yellow path and **Expected finish** marker include terrain, grain, and cup
-capture; Competition hides them. Random stroke error, when enabled in Practice,
-is applied after this preview.
+**Stroke** is the default control: a fixed pull produces the same launch speed
+between lies. Standard, Short/precision, and Long ranges are selected explicitly.
+Standard and Short use the launch speeds for 60 ft and 10 ft on the flat Stimp-10
+reference; Long uses the full launch limit. Faster greens roll farther for the
+same stroke. Settings → Touch & cup also offers **Distance**, a fixed-range
+flat-ground feet assist, and **Adaptive distance**, the original control that
+changes sensitivity with each lie. The first lesson uses the distance assist.
 
-Dragging has a six-pixel dead zone, a gentle short-distance response, and light
-time-based smoothing. The distance range is chosen from the current lie and
-frozen for each gesture; **Extend range** makes the full calibrated reach
-available. Camera zoom does not scale the drag-to-distance mapping. Release uses
-the last aiming sample without a new lift-off coordinate. The slider and drag
-both use the same distance calibration.
+The neutral meter shows control strength, and a short white guide shows the
+starting direction. Flat-ground reach appears as a number. Practice's optional
+yellow path and Expected finish marker include actual terrain, grain, and the
+selected cup rule. Unsettled simulations have no stopping marker. With random
+stroke error enabled, predictions describe the intended launch before error.
+
+Pace feedback uses a second simulation with cup capture disabled. This prevents
+the forgiving cup from hiding excessive pace. Good pace is a game target: a
+potential finish from 0.35 ft short to 1.5 ft beyond the cup plane, with arrival
+speed at most 3.5 ft/s. A meaningful line near the cup is required before grading
+pace; starting-line misses are reported separately. This band is not a universal
+golf recommendation. The straight-at-cup read uses the selected speed and the
+offset at the cup crossing, not the final lateral displacement.
+
+After a miss, Practice offers a replay from the same lie with the previous path
+and a simulated adjustment expressed in the active control's units. Soft/firm
+route comparison illustrates alternative makes, not the selected shot's path.
+Replay preserves the launch strength when switching control units or ranges.
+Drills have no random stroke error; the pace target allows the ball to roll
+through so the actual stopping point determines success.
+
+Dragging retains a six-pixel dead zone and time-based smoothing. The range stays
+fixed during a gesture; camera zoom does not scale touch strength. Release uses
+the last aiming sample without a new lift-off coordinate. A held pull settles
+to the finger's position, and rotation cancels an unfinished stroke. The camera frames the
+ball and cup around the panels and remains steady while the ball rolls.
+Optional native iPhone haptics occur only on impact and success; rolling is silent.
 
 ## Saves and privacy
 
-XP, cosmetics, make stats, settings, and one active run are stored in the browser under `green-reader-v1`. Existing `gr3d-career` and `gr3d-stats` data are migrated on read. Saves have schema validation; invalid run data is discarded while valid career/settings data can recover. Storage failures show a notice. Clearing browser site data removes progress. Saves are local, editable, and are not a secure leaderboard.
+XP, cosmetics, make stats, drill stats, settings, and one active run are stored in the browser under `green-reader-v1`. Existing `gr3d-career` and `gr3d-stats` data are migrated on read. Saves have schema validation; invalid run data is discarded while valid career/settings data can recover. Course version 2 starts a fresh round after upgrading the old terrain/physics and retains XP, cosmetics, and settings. Storage failures show a notice. Clearing browser site data removes progress. Saves are local, editable, and are not a secure leaderboard.
 
 Shots are checkpointed at launch, stop, completion, and page hide. Refreshing a rolling shot resumes its deterministic simulation. Career awards and the completed-hole state are written together to avoid awarding the same result again on resume.
 
@@ -82,7 +103,7 @@ No analytics or error data is transmitted automatically. Help includes a feedbac
 
 ## Simulation limits
 
-This is a stylized game, not a validated golf-training instrument. Elevation is visually exaggerated 2.8×, gravity is tuned for readable break, the ball/cup are enlarged, and capture/lip-out behavior is simplified. Stimp influences resistance, but the skid and settling model means distances are not a calibration of a physical Stimpmeter. Stats compare against an illustrative fixed reference table, not verified current PGA Tour measurements.
+This is a stylized game, not a validated golf-training instrument. Elevation is visually exaggerated 1.8×; effective rolling acceleration is approximately 5/7 of gravity. The ball and cup are enlarged. The default cup accepts all crossings; optional realistic capture considers speed and entry offset with no flag collision or rim bounce. The visible fringe adds resistance, and the outer edge stops the ball for a penalty-free next stroke. Pins are screened for stopping behavior in their neighborhood at the fastest supported green speed. Stimp influences resistance, but the skid and settling model means distances are not a calibration of a physical Stimpmeter. Stats compare against an illustrative fixed reference table, not verified current PGA Tour measurements.
 
 Actual play, path prediction, reach checks, and the worker-based best-line solver use the same fixed 1/120-second roll step. Optional Practice stroke error changes the launch once; guides assume the intended launch. Green routes are makeable in the model; amber routes are the closest found within a bounded search, not proof that a direct make is impossible.
 
@@ -93,6 +114,8 @@ Actual play, path prediction, reach checks, and the worker-based best-line solve
 | `src/main.js` | Boot and recoverable startup error UI |
 | `src/game.js` | Game flow and integration |
 | `src/physics.js`, `src/terrain.js` | Shared roll simulation and elevation/gradient |
+| `src/aiming.js`, `src/feedback.js` | Stroke/distance calibration, pace/line assessment, replay advice |
+| `src/drills.js`, `src/haptics.js` | Repeatable practice targets, scoring, optional native touch feedback |
 | `src/course.js` | Seeded terrain, pin, and ball placement |
 | `src/solver.js`, `src/solver.worker.js` | Bounded ideal-shot search off the UI thread |
 | `src/scoring.js`, `src/storage.js` | Progression and validated persistence |
