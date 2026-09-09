@@ -403,6 +403,15 @@ body.aiming #puttFeedback,body.rolling #puttFeedback{display:none;}
 #dragPower[data-pace=short] #dragPace{color:#8cd4fa;}
 #dragPower[data-pace=long] #dragPace,#dragPower[data-pace=firm] #dragPace{color:#ffb084;}
 #dragPower[data-pace=good] #dragPace{color:#7ee081;}
+#dragBounds{position:fixed;inset:calc(env(safe-area-inset-top) + 64px) calc(env(safe-area-inset-right) + 16px) calc(env(safe-area-inset-bottom) + 20px) calc(env(safe-area-inset-left) + 16px);visibility:hidden;pointer-events:none;}
+#dragPower{width:min(154px,calc((100vw - 48px)/2));}
+#dragRoll{display:block;font-size:10px;color:#d5e4da;margin-top:6px;line-height:1.4;}
+#finishMarkerLabel{max-width:min(230px,calc(100vw - 32px));padding:6px 9px;border:1px solid #7ee08170;border-radius:10px;white-space:normal;text-align:center;line-height:1.35;color:#b7f7b8;}
+#finishTitle,#finishDetail{display:block;}
+#finishDetail{font-size:10px;font-weight:400;margin-top:3px;color:#e8f0e6;}
+#finishMarkerLabel.offscreen{border-style:dashed;}
+#finishTarget{position:fixed;width:18px;height:18px;border:2px solid #a4ffa6;border-radius:50%;transform:translate(-50%,-50%);box-shadow:0 0 0 2px #14241980;pointer-events:none;z-index:9;}
+#finishTarget::after{content:'';position:absolute;width:4px;height:4px;left:5px;top:5px;border-radius:50%;background:#d5ffd5;}
 @media(max-width:759px) and (min-height:501px){
   body:not(.detailedRead) #readCard{width:calc(100vw - 24px);grid-template-columns:repeat(2,minmax(0,1fr));}
   body.careerMode:not(.detailedRead) #readCard{grid-template-columns:1fr;}

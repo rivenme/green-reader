@@ -68,11 +68,12 @@ export function rollStep(b, level, options={}, h=STEP){
 export function simulate(level, start, options={}, collect=true){
   const b=launch(start.x,start.y,start.vx,start.vy);
   const pts=collect?[{x:b.x,y:b.y}]:null;
-  let minD=Math.hypot(b.x-level.hole.x,b.y-level.hole.y),spAtMin=0,event='moving',crossing=null;
+  let minD=Math.hypot(b.x-level.hole.x,b.y-level.hole.y),spAtMin=0,event='moving',crossing=null,travel=0;
   const initialDistance=minD||1,ux=(level.hole.x-start.x)/initialDistance,uy=(level.hole.y-start.y)/initialDistance;
   for(let i=0;i<3600;i++){
     const px=b.x,py=b.y;
     event=rollStep(b,level,options);
+    travel+=Math.hypot(b.x-px,b.y-py);
     const before=(px-level.hole.x)*ux+(py-level.hole.y)*uy;
     const after=(b.x-level.hole.x)*ux+(b.y-level.hole.y)*uy;
     if(!crossing && before<0 && after>=0){
@@ -85,5 +86,5 @@ export function simulate(level, start, options={}, collect=true){
     if(event!=='moving')break;
   }
   if(collect)pts.push({x:b.x,y:b.y});
-  return {holed:event==='holed',minD,spAtMin,arrSp:b.arrivalSpeed||0,pts,ball:b,crossing};
+  return {holed:event==='holed',minD,spAtMin,arrSp:b.arrivalSpeed||0,pts,ball:b,crossing,travel};
 }

@@ -95,7 +95,7 @@
       <hr/>
       <details id="controlSettings"><summary>Touch &amp; cup</summary>
         <label for="controlMode">Putt control</label><select id="controlMode"><option value="stroke">Stroke · consistent touch</option><option value="distance">Distance · feet assist</option><option value="adaptive">Adaptive distance · original feel</option></select>
-        <label for="strokeScale">Stroke range</label><select id="strokeScale"><option value="standard">Standard</option><option value="precision">Short putts · precision</option><option value="long">Long putts · full stroke</option></select>
+        <label for="strokeScale">Stroke range</label><select id="strokeScale"><option value="long">Full stroke · all distances</option><option value="standard">Medium putts · finer control</option><option value="precision">Short putts · precision</option></select>
         <p class="legend">Stroke keeps the same strength between holes. Distance assists select flat-ground feet. Adaptive distance changes sensitivity with each lie.</p>
         <label for="cupMode">Cup behavior</label><select id="cupMode"><option value="forgiving">Forgiving · every crossing drops</option><option value="realistic">Realistic · pace and entry matter</option></select>
         <p class="legend">The flag is decorative in both modes. Competition uses the forgiving cup.</p>
@@ -118,7 +118,8 @@
       <hr/>
       <h2>Learning Aids</h2>
       <label class="toggle"><input type="checkbox" id="optSlope" checked> Break flow dots</label>
-      <label class="toggle"><input type="checkbox" id="optPath"> Predicted path & expected finish</label>
+      <label class="toggle"><input type="checkbox" id="optPath" checked> Roll path &amp; stopping point</label>
+      <p class="legend">White points along your starting line. Green follows the expected roll; the ring marks its finish on this terrain.</p>
       <label class="toggle"><input type="checkbox" id="optBest"> Best line to hole</label>
       <label class="toggle"><input type="checkbox" id="optPace" checked> Pace &amp; starting-line feedback</label>
       <label class="toggle"><input type="checkbox" id="optCompare"> Compare soft &amp; firm routes</label>
@@ -168,10 +169,12 @@
   <div id="paceFeedback" hidden><b id="paceLabel"></b><span id="lineLabel"></span></div>
   <p id="keyboardHint">Drag back, then release. <span class="keyboardOnly">← → aim · ↑ ↓ pace · Space putts</span></p>
 </section>
-<div id="dragPower" hidden aria-label="Drag power"><div class="dragPowerHead"><span id="dragPowerCaption">Stroke</span><b id="dragPowerValue">0%</b></div><div class="dragPowerTrack"><div id="dragPowerFill"></div></div><span id="dragPace" hidden></span></div>
+<div id="dragBounds" aria-hidden="true"></div>
+<div id="dragPower" hidden aria-label="Drag power"><div class="dragPowerHead"><span id="dragPowerCaption">Stroke</span><b id="dragPowerValue">0%</b></div><div class="dragPowerTrack"><div id="dragPowerFill"></div></div><span id="dragRoll" hidden></span><span id="dragPace" hidden></span></div>
 <section id="puttFeedback" hidden aria-label="Last putt feedback"><div class="finishRow"><b id="finishText"></b><button id="feedbackToggle" aria-controls="feedbackDetails" aria-expanded="false">Details</button></div><div id="feedbackDetails" hidden><p id="adjustmentText"></p><button id="retryLast">Try the same putt</button></div></section>
 <section id="drillPanel" hidden aria-label="Practice drill"><div class="drillHeading"><b id="drillTitle"></b><button id="exitDrill" aria-label="Leave drill">×</button></div><p id="drillInstruction"></p><p id="drillResult" role="status"></p><div class="drillActions"><button id="drillAgain" hidden>Try again</button><button id="drillNext" class="primary" hidden>Next putt</button></div></section>
-<span id="finishMarkerLabel" hidden>Expected finish</span>
+<span id="finishTarget" aria-hidden="true" hidden></span>
+<div id="finishMarkerLabel" hidden><b id="finishTitle">Expected stop</b><span id="finishDetail"></span></div>
 <span id="ballHandle" aria-hidden="true" hidden></span>
 <p id="saveStatus" role="status" class="saveNotice"></p>
 </main>
@@ -201,13 +204,13 @@
 <div id="graphicsLost" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="graphicsTitle" data-dismissible="false"><div class="ovcard"><h2 id="graphicsTitle">Graphics paused</h2><p>The browser interrupted the 3D view. Your current progress has been checkpointed. Reload to rebuild the green.</p><button id="graphicsReload">Reload green</button></div></div>
 <div id="help" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="helpTitle"><div class="ovcard helpCard"><h2 id="helpTitle">A little help with your read</h2>
   <p><b>Controls:</b> choose Drag the ball or Aim buttons on the home screen or in Settings. Drag keeps the bottom panel hidden; pull back from the ball and release to putt. Aim buttons shows the slider and Putt button. Your choice is saved.</p>
-  <p><b>Stroke:</b> the same pull produces the same strength between holes. Faster greens roll farther. Choose Short putts in Touch &amp; cup for precision, or use Distance for an exact-feet assist. Adaptive distance restores the original sensitivity that changes with the lie.</p>
-  <p><b>Pace:</b> the green bar grows with strength; its tip is not a predicted stopping point. A small meter appears beside the ball while dragging. Practice labels use a simulated roll without the cup: Good pace means finishing from 4 inches short to 18 inches past the cup line, with a controlled arrival. It is a game target, not a guarantee of a make. Starting line is assessed separately. A large sideways miss says Check starting line. No prediction means no claimed finish.</p>
-  <p><b>Break:</b> dots move downhill. Aim uphill and let the slope curve your putt. In Practice, enable Predicted path &amp; expected finish to see the simulated stopping point. With stroke error enabled, the preview is before random error.</p>
+  <p><b>Stroke:</b> the camera leaves room for a full pull. Near a screen edge, the available space still reaches full power. Full stroke is the default range; choose Medium or Short putts in Touch &amp; cup for finer control. Distance selects flat-ground feet; Adaptive distance changes sensitivity with the lie.</p>
+  <p><b>Aim and finish:</b> the short white arrow shows your starting direction. In Practice and the lesson, the green path bends with the terrain and ends at the expected stopping ring. It uses the same slope, green speed, grain, fringe, and cup rules as your putt. The readout shows how far the ball rolls on this green. The preview stays visible during the roll so you can compare; turn it off in Settings to practice without a guide. With stroke error enabled, it shows the intended shot before that random error.</p>
+  <p><b>Pace:</b> the small meter beside the ball shows strength. If the cup would catch a firm putt, its marker also explains how far it would roll past if missed. Good pace means finishing from 4 inches short to 18 inches past the cup line with a controlled arrival. It is a game target, not a guarantee of a make. Dots move downhill; aim uphill and let the slope curve your putt.</p>
   <p><b>Camera:</b> the view stays still during your stroke and smoothly reframes the next putt once the ball stops. Turn off Reframe after each putt in Settings for manual framing. Drag away from the ball to orbit, pinch or scroll to zoom. C returns behind the ball; V gives a low view.</p>
   <p><b>Practice:</b> try the pace ladder, short-putt circle, and starting-line gate in Settings. After a miss, tap Details for coaching and a replay with the previous path. Soft/firm comparison shows two possible routes, not a prediction of your selected stroke.</p>
   <p><b>Cup &amp; fringe:</b> forgiving cups accept every crossing; optional realistic cups let overly fast or shallow crossings roll over. Neither mode collides with the flag. The visible fringe slows the ball. At its outer edge, the ball stops for your next stroke without an extra penalty.</p>
-  <p><b>Keyboard:</b> focus the green. Left/right aim; up/down adjust distance by 0.1 ft. Space putts, Escape cancels. R retries and N skips in practice. H opens settings.</p>
+  <p><b>Keyboard:</b> focus the green. Left/right aim; up/down adjust strength by 1% or assisted distance by 0.1 ft. Space putts, Escape cancels. R retries and N skips in practice. H opens settings.</p>
   <p><b>Competition:</b> fixed layouts, Stimp 10, grain on, stroke error off. No retries, skipping, or predicted/best lines. Scores are local to this browser.</p>
   <p class="finePrint">This is a stylized simulation with exaggerated elevation and simplified cup behavior. Benchmark stats are illustrative, not validated coaching or PGA Tour measurements. No accounts, ads, or automatic tracking. Progress is stored in this browser; clearing site data removes it.</p>
   <a class="feedbackLink" href="https://github.com/rivenme/green-reader/issues/new" target="_blank" rel="noopener noreferrer">Report a problem or suggest an improvement ↗</a><button id="exportDiagnostics">Download error report</button><p class="finePrint">The report contains recent errors and browser details. Nothing is sent automatically. Attach it to your issue if useful.</p><button data-close>Back to the green</button>

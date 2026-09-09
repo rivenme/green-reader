@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {distanceCalibration,flatRollDistance,lieRange,pullDistance,createDragGesture,strokeSpeed,strokePercent} from '../src/aiming.js';
+import {distanceCalibration,flatRollDistance,lieRange,pullDistance,createDragGesture,strokeSpeed,strokePercent,preferredPull,availablePull} from '../src/aiming.js';
 import {MAXSPEED} from '../src/constants.js';
 
 test('chosen distances match the full skid and roll simulation on every green speed',()=>{
@@ -54,4 +54,19 @@ test('a held pull settles to the finger even when move events arrive together',(
   assert.equal(gesture.sample(300).y,255);
   gesture.move(202,201,320);
   assert.equal(gesture.sample(400).distance,0);
+});
+test('full power fits within safe screen bounds in portrait, landscape, and near edges',()=>{
+  for(const [width,height] of [[390,664],[740,360],[320,568]]){
+    const bounds={left:16,right:width-16,top:64,bottom:height-20},maxPull=preferredPull(width,height);
+    for(const [x,y] of [[width/2,height*.5],[bounds.left+30,bounds.bottom-25],[bounds.right-30,100]]){
+      for(const [dx,dy] of [[0,1],[1,0],[-1,0],[0,-1],[1,1],[-1,-1]]){
+        const limit=availablePull(x,y,dx,dy,maxPull,bounds),length=Math.hypot(dx,dy);
+        const end={x:x+dx/length*limit,y:y+dy/length*limit};
+        assert.ok(end.x>=bounds.left-.01&&end.x<=bounds.right+.01&&end.y>=bounds.top-.01&&end.y<=bounds.bottom+.01);
+        const gesture=createDragGesture({x,y,maxPull,range:100,bounds});
+        assert.equal(gesture.move(end.x,end.y,100).distance,100);
+        assert.ok(gesture.move(x+dx/length*limit*.5,y+dy/length*limit*.5,300).distance<100);
+      }
+    }
+  }
 });

@@ -11,6 +11,12 @@ test('malformed values do not poison saved data',()=>{
   assert.equal(validateSettings({shotInput:'unknown'}).shotInput,'drag');
   assert.equal(validateCareer({xp:0,ball:'gold'}).ball,'white');
 });
+test('aiming upgrade enables the terrain guide and full power once, then honors preferences',()=>{
+  const upgraded=validateSettings({optPath:false,strokeScale:'standard'});
+  assert.equal(upgraded.optPath,true);assert.equal(upgraded.strokeScale,'long');
+  assert.equal(validateSettings({strokeScale:'precision'}).strokeScale,'precision');
+  assert.deepEqual(validateSettings({...upgraded,optPath:false,strokeScale:'standard'}),{...upgraded,optPath:false,strokeScale:'standard'});
+});
 test('legacy XP migrates and new envelope roundtrips atomically',()=>{
   const s=storage();s.setItem('gr3d-career',JSON.stringify({xp:6000,ach:['bomb','bad']}));
   const store=createStore(s);assert.equal(store.state.career.xp,6000);assert.deepEqual(store.state.career.ach,['bomb']);

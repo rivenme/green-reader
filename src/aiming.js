@@ -42,14 +42,31 @@ export function pullDistance(pull,maxPull,range,deadZone=6){
   // Gentle near the ball for tap-ins, with progressively more reach.
   return Math.round(range*Math.pow(fraction,1.5)*10)/10;
 }
-export function createDragGesture({x,y,maxPull,range,time=0}){
+export function preferredPull(width,height){return Math.min(185,width*.48,height*.3);}
+// A complete stroke must fit between the finger's start and the safe screen edge.
+// With normal framing this returns the usual pull length; a cramped manual view
+// compresses only the unavailable portion. The bounds stay fixed for the gesture.
+export function availablePull(x,y,dx,dy,maxPull,bounds){
+  const length=Math.hypot(dx,dy);if(!bounds||length<1e-6)return maxPull;
+  const ux=dx/length,uy=dy/length;
+  let room=maxPull;
+  if(ux>1e-6)room=Math.min(room,(bounds.right-x)/ux);
+  if(ux< -1e-6)room=Math.min(room,(bounds.left-x)/ux);
+  if(uy>1e-6)room=Math.min(room,(bounds.bottom-y)/uy);
+  if(uy< -1e-6)room=Math.min(room,(bounds.top-y)/uy);
+  return Math.max(7,room);
+}
+export function createDragGesture({x,y,maxPull,range,time=0,bounds}){
+  bounds=bounds?{...bounds}:null;
   let smooth={x,y},target={x,y},lastTime=time,started=false;
   const sample=nextTime=>{
     const alpha=1-Math.exp(-clamp(nextTime-lastTime,0,100)/24);
     smooth.x+=(target.x-smooth.x)*alpha;smooth.y+=(target.y-smooth.y)*alpha;
     lastTime=Math.max(lastTime,nextTime);
     if(Math.hypot(target.x-smooth.x,target.y-smooth.y)<.1)smooth={...target};
-    return {...smooth,distance:pullDistance(Math.hypot(smooth.x-x,smooth.y-y),maxPull,range)};
+    const dx=smooth.x-x,dy=smooth.y-y;
+    const limit=availablePull(x,y,dx,dy,maxPull,bounds);
+    return {...smooth,distance:pullDistance(Math.hypot(dx,dy),limit,range)};
   };
   return {sample,move(nextX,nextY,nextTime){
     const rawPull=Math.hypot(nextX-x,nextY-y);

@@ -40,15 +40,23 @@ test('a ghost target never captures and friction never reverses a flat putt',()=
   const b=launch(10,10,.015,0);for(let i=0;i<20;i++){rollStep(b,flat);assert.ok(b.vx>=0);}
   assert.equal(b.moving,false);
 });
-test('prediction and fixed-step playback end at exactly the same position',()=>{
-  const start={x:10,y:10,vx:8,vy:2};const predicted=simulate(flat,start);
+test('terrain preview and fixed-step playback agree for slopes, grain, fringe, and cup rules',()=>{
+  const start={x:10,y:10,vx:8,vy:2};
+  for(const level of [flat,{...flat,baseGrad:{x:.04,y:0}},{...flat,baseGrad:{x:-.04,y:0}},
+    {...flat,baseGrad:{x:0,y:.03},grain:{hx:1,hy:0,mag:.004}},
+    {...flat,hole:{x:14,y:11}},{...flat,hole:{x:14,y:11},baseGrad:{x:-.1,y:.01}}]){
+  for(const options of [{stimp:7,grain:false},{stimp:14,grain:true,cupMode:'realistic'}]){
+  const predicted=simulate(level,start,options);
+  assert.ok(predicted.travel>=Math.hypot(predicted.ball.x-start.x,predicted.ball.y-start.y)-1e-9);
+  assert.deepEqual(predicted.pts.at(-1),{x:predicted.ball.x,y:predicted.ball.y});
   for(const fps of [30,60,144]){
     const b=launch(start.x,start.y,start.vx,start.vy);let acc=0;
     for(let f=0;f<fps*30&&b.moving;f++){
-      acc+=1/fps;while(acc>=STEP&&b.moving){acc-=STEP;rollStep(b,flat);}
+      acc+=1/fps;while(acc>=STEP&&b.moving){acc-=STEP;rollStep(b,level,options);}
     }
     assert.equal(b.x,predicted.ball.x);assert.equal(b.y,predicted.ball.y);
   }
+  }}
 });
 test('downhill slope curves the shot and grain changes roll',()=>{
   const l={...flat,baseGrad:{x:0,y:.02},grain:{hx:1,hy:0,mag:.004}};

@@ -52,6 +52,11 @@ Connect record, archive signing, and upload through Xcode.
   stops; **Reframe after each putt** in Settings can disable this.
 - Settings → Touch & cup offers consistent stroke controls, a feet assist, and
   the original adaptive distance control. Practice drills are in Settings.
+- Full stroke is the default range. The camera reserves drag room in portrait
+  and landscape; near a screen edge, the available pull still reaches full power.
+  Practice's green path and stop ring use the same terrain physics as the shot.
+  The small white arrow shows the starting direction, and the drag readout shows
+  expected travel on this green. The preview stays visible while the ball rolls.
 - The haptics plugin is included through Swift Package Manager after sync.
   Haptics require a physical iPhone; the simulator can verify the build and UI.
 - Progress and settings are local to this app. Browser saves do not transfer
