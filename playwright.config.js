@@ -4,13 +4,11 @@ export default defineConfig({
   timeout:process.env.CI?60000:30000,
   maxFailures:process.env.CI?3:0,
   reporter:[['list'],['html',{open:'never'}]],
-  use:{baseURL:'http://127.0.0.1:5173',trace:'retain-on-failure',screenshot:'only-on-failure'},
+  use:{baseURL:'http://127.0.0.1:5173',trace:process.env.CI?'on-first-retry':'retain-on-failure',screenshot:'only-on-failure'},
   projects:[
     {name:'chromium',use:{...devices['Desktop Chrome']}},
-    {name:'firefox',use:{...devices['Desktop Firefox'],launchOptions:process.env.CI?{
-      // Virtual macOS displays can stall hardware vsync; keep real-time frames.
-      firefoxUserPrefs:{'layout.frame_rate':60}
-    }:{}}},
+    // Exercise the macOS window compositor in CI; local runs remain headless.
+    {name:'firefox',use:{...devices['Desktop Firefox'],headless:!process.env.CI}},
     {name:'webkit',use:{...devices['Desktop Safari']}},
     {name:'mobile-chrome',use:{...devices['Pixel 7']}},
     {name:'mobile-safari',use:{...devices['iPhone 13']}}
