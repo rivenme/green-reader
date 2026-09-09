@@ -24,7 +24,8 @@ test('practice preview shows an endpoint, disappears for the shot, and stays off
   expect(Number(await page.locator('#shotPower').getAttribute('max'))).toBeGreaterThanOrEqual(max);
   await expect(page.locator('#powerValue')).toHaveText('5.0 ft');
   await page.locator('#btnPutt').click();await expect(page.locator('#finishMarkerLabel')).toBeHidden();
-  await page.locator('#openHome').click();await page.locator('#startCareer').click();
+  await expect(page.locator('#result')).toBeVisible({timeout:15000});
+  await page.locator('#restartResult').click();await page.locator('#startCareer').click();
   await page.locator('#shotPower').fill('5');await expect(page.locator('#finishMarkerLabel')).toBeHidden();
 });
 

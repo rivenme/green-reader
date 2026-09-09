@@ -45,7 +45,8 @@ test('a short miss explains its finish and retries the same lie and selected str
   await expect(page.locator('#uiDist')).toHaveText(original);
 });
 test('pace drill measures rollout, supports retries, and saves results without replacing the round',async({page},info)=>{
-  test.setTimeout(60000);
+  // Two complete putts plus a saved-round reload; each result keeps its 20s limit.
+  test.setTimeout(process.env.CI?90000:60000);
   await page.goto('/');await page.locator('#startPractice').click();await page.locator('#stage canvas').press('n');
   await distanceAssist(page);await drill(page,'#startPaceDrill');
   await expect(page.locator('#drillInstruction')).toContainText('10 ft');
