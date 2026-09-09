@@ -67,3 +67,17 @@ Revision `22fad11` restores a growing green strength bar and automatic framing a
 - Desktop and phone screenshots were inspected for the growing bar, clear drag layout, button layout, and camera framing after a miss. The drag regression waits for the existing input smoothing to settle before comparing a repeated pull.
 
 This is a controls and presentation update; existing version-2 rounds remain resumable. Physical-device feel still requires playtesting on the phone.
+
+## Drag room and terrain preview update · 2026-09-09
+
+Revision `deaee16` reserves enough room for a full pull and maps cramped edge gestures to the available screen space. Full stroke is now the default range. A white arrow shows the starting direction; the green path and stop ring use the same simulation as the played shot. The guide is enabled in Practice and the lesson, remains visible during the roll, and can be disabled in Practice settings.
+
+- **42 unit tests passed.** Coverage now includes safe-edge power normalization, the one-time guide/range migration, and exact preview/playback agreement at 30/60/144 fps on uphill, downhill, cross-slope, grain, cup, and fringe scenarios.
+- **181 browser checks passed locally** across all five profiles with no retries. Four duplicate host-performance samples were intentionally skipped. The new scenarios reach 100% power within portrait, landscape, and compact viewports, keep the meter off the ball, compare the actual stop against the displayed target on a sloping green, and retain an explicit guide-off preference after reopening.
+- **[The release workflow passed](https://github.com/rivenme/green-reader/actions/runs/34407420485)** for revision `deaee16`, including the unit/build job and all five browser profiles.
+- The sloping-green browser check compares the actual ball center with the displayed stop ring within two screen pixels and requires the final miss description to equal the preview. These checks passed in every browser profile.
+- **The production build, JavaScript syntax, and whitespace checks passed.** The main game is approximately 26.8 kB gzip, CSS 5.4 kB gzip, and HTML 6.6 kB gzip, alongside the existing Three.js and supporting chunks.
+- **The updated iPhone bundle was synced and the Xcode simulator build succeeded** using the iOS Simulator 26.5 SDK with signing disabled.
+- Portrait, landscape, compact-screen, predicted-stop, and actual-stop screenshots were inspected. The compact meter remains beside the ball, and the landscape framing leaves room for a full pull.
+
+Ball dynamics and cup capture are unchanged; simulation now also reports total travel for the preview readout. Existing version-2 rounds remain resumable. Automated agreement demonstrates consistency with the game's physics, not calibration against measured golf putts or physical-device preference testing.
