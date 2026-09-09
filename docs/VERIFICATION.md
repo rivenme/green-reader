@@ -35,3 +35,9 @@ Final targeted camera/mobile-layout checks: **15 passed** across all five profil
 - Portrait and landscape screenshots were visually inspected. Quick actions clear Settings after rotation; the ball and cup sit in the available play area; practice feedback and drill results remain readable.
 
 The update changes the generated greens and slope response, so course version 2 starts a fresh round when opening a version-1 run. XP, cosmetics, settings, and lifetime stats are retained. Human preference testing and real-golf calibration remain outside these automated results.
+
+### CI environment follow-up
+
+The first [Linux CI run](https://github.com/rivenme/green-reader/actions/runs/34297125567) exceeded its 15-minute job limit after slow Chromium checks and repeated Firefox failures. It did not produce a completed browser report, so it is not a passing verification result. The local and live-site results above are independent of that run.
+
+The workflow now keeps the unit/build job on Linux and runs each browser profile separately on standard macOS 26 runners, matching the locally verified graphics platform. Each CI job uses one worker, a 60-second whole-test limit, and a three-failure stop limit so a broken environment produces a report promptly. Individual gameplay assertions retain their original limits. Reports also include raw traces and screenshots, which can survive an interrupted HTML report. This follows Playwright's [guidance on CI workers and distributing tests](https://playwright.dev/docs/ci); macOS 26 is a [standard GitHub runner](https://docs.github.com/en/actions/reference/runners/github-hosted-runners).

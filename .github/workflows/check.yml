@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 jobs:
-  verify:
+  build:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -18,16 +18,45 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
-      - run: npx playwright install --with-deps chromium firefox webkit
-      - run: npm run test:e2e
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: browser-report
-          path: playwright-report/
-          retention-days: 14
       - uses: actions/upload-artifact@v4
         with:
           name: preview-build
           path: dist/
+          retention-days: 14
+  browsers:
+    name: Browser (${{ matrix.project }})
+    needs: build
+    # Match the macOS graphics environment used to verify the WebGL/iPhone app.
+    runs-on: macos-26
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - project: chromium
+            browser: chromium
+          - project: firefox
+            browser: firefox
+          - project: webkit
+            browser: webkit
+          - project: mobile-chrome
+            browser: chromium
+          - project: mobile-safari
+            browser: webkit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps ${{ matrix.browser }}
+      - run: npm run test:e2e -- --project=${{ matrix.project }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: browser-report-${{ matrix.project }}
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 14
