@@ -48,3 +48,9 @@ The first macOS matrix run passed both Safari profiles and mobile Chrome. Its tr
 Firefox's CI trace showed long frame-related waits while ordinary DOM reads remained responsive. Software vsync, a visible macOS window, and the Intel macOS runner did not resolve the rendering stalls. Firefox now uses `ubuntu-24.04` with a headed browser under Xvfb and Mesa's LLVMpipe software OpenGL; Chrome and Safari use `macos-26`. This follows the documented [Playwright Xvfb setup](https://playwright.dev/docs/ci) and [Mesa software-renderer selection](https://docs.mesa3d.org/envvars.html). A small host diagnostic renders an animated WebGL triangle and logs visibility, renderer, frame timing, and pixel output before the game tests. It changes no application settings and does not replace gameplay coverage.
 
 CI records traces on the first retry, following [Playwright's guidance](https://playwright.dev/docs/trace-viewer), to avoid continuous capture overhead during normal verification. Failure screenshots and all gameplay assertions are retained. These are test-runner changes; app physics and shipped browser behavior are unchanged.
+
+### Final CI result · 2026-09-09
+
+[The complete release check passed](https://github.com/rivenme/green-reader/actions/runs/34367878484) for code revision `504303d`: 40 unit tests, the production build, and all **136 browser checks**, with four intentional duplicate performance skips and no flaky-test results. Chromium passed 28 checks; Firefox, WebKit, mobile Chrome, and mobile Safari each passed 27. Firefox's Linux host rendered the diagnostic triangle at 38 fps with no OpenGL errors; this is a host diagnostic, not a gameplay performance benchmark. The full Firefox gameplay suite then passed in 1.6 minutes.
+
+The iPhone bundle and live-site checks described above contain the same gameplay implementation; subsequent changes affected only tests, CI, and documentation.
